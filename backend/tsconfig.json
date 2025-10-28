@@ -1,13 +1,27 @@
 {
   "compilerOptions": {
-    "target": "ES2020",                // Kompiluj do nowoczesnego JavaScriptu
-    "module": "CommonJS",             // Używaj standardowego formatu modułów Node.js
-    "moduleResolution": "node",       // Jak Node.js szuka modułów
-    "esModuleInterop": true,          // <--- TO JEST KLUCZOWA POPRAWKA
+    "target": "ES2020",
+    "module": "CommonJS",
+    "rootDir": "./",
+    "outDir": "./dist",
+    "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "strict": true,                   // Włącz sprawdzanie typów
-    "skipLibCheck": true,             // Przyspiesz kompilację
-    "outDir": "dist"
+    "strict": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+
+    // --- DODANO W CELU KOPIOWANIA PLIKÓW JS/JSON ---
+    "allowJs": true,
+    "checkJs": true,
+    // Pliki JS (jak trackerScraper.js) będą kopiowane
+    "moduleResolution": "Node",
+    "types": ["node"]
   },
-  "include": ["index.ts"] // Uwzględnij tylko Twój główny plik serwera
+  "include": [
+    "./**/*.ts",
+    "./**/*.js" // Wymuś kompilator na uwzględnienie JS
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }
