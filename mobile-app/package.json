@@ -1,32 +1,38 @@
 {
-  "name": "mobile-app",
+  "name": "backend",
   "version": "1.0.0",
-  "main": "index.js",
+  "description": "Serwer backend dla aplikacji Battlefield Tracker",
+  "main": "dist/index.js",
   "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web"
+    "dev": "nodemon --exec ts-node index.ts",
+    "build": "tsc && copyfiles -u 1 \"utils/**/*\" dist",
+    "start": "node dist/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
   "dependencies": {
-    "@react-native-async-storage/async-storage": "^2.2.0",
-    "@react-native-picker/picker": "2.11.1",
-    "@types/react": "~19.1.10",
+    "@types/bcrypt": "^5.0.2",
+    "@types/jsonwebtoken": "^9.0.6",
+    "@types/node": "^20.14.9",
+    "@types/nodemailer": "^6.4.15",
+    "@types/pg": "^8.11.6",
     "axios": "^1.7.2",
-    "expo": "^54.0.0",
-    "expo-dev-client": "~6.0.16",
-    "expo-linear-gradient": "~15.0.7",
-    "expo-status-bar": "~3.0.8",
-    "prop-types": "^15.8.1",
-    "react": "19.1.0",
-    "react-native": "0.81.5",
-    "react-native-picker-select": "^9.3.1",
-    "react-native-safe-area-context": "^5.6.1",
-    "typescript": "~5.9.2"
+    "bcrypt": "^5.1.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^6.9.14",
+    "pg": "^8.12.0",
+    "typescript": "^5.5.2"
   },
   "devDependencies": {
-    "@babel/core": "^7.26.0",
-    "expo-doctor": "^1.17.11"
-  },
-  "private": true
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "copyfiles": "^2.4.1",
+    "nodemon": "^3.1.10",
+    "ts-node": "^10.9.2"
+  }
 }
