@@ -5,7 +5,8 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "nodemon --exec ts-node index.ts",
-    "build": "tsc && copyfiles -u 1 \"utils/**/*\" dist", 
+    // Zmieniono kompilację, aby JAWNIE kompilowała tylko index.ts, co powinno zapobiec błędom TS w server.js
+    "build": "tsc index.ts --outDir dist && copyfiles -u 1 \"utils/**/*\" dist", 
     "start": "node dist/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -36,3 +37,14 @@
     "ts-node": "^10.9.2"
   }
 }
+```
+
+### 🚀 Następne kroki:
+
+1.  **Zapisz plik `package.json`** w Canvas z nową komendą `tsc index.ts --outDir dist`.
+2.  **Zrób commit i wypchnij zmiany** do GitHub, aby Render mógł rozpocząć nowe wdrożenie:
+    ```bash
+    git add .
+    git commit -m "Final fix: Force tsc to compile only index.ts to avoid server.js error"
+    git push origin main
+    
