@@ -258,20 +258,4 @@ app.listen(process.env.PORT || PORT, () => {
   console.log(`Serwer działa na porcie ${process.env.PORT || PORT}`);
   console.log(`Otwórz: http://localhost:${process.env.PORT || PORT}`);
 });
-```
 
-### 🛠️ Krok 2: Wypchnij zmiany do Render.com (bez `tsc`)
-
-1.  **Zmień Build Command na Render.com (tylko Node.js)**. Render nie potrzebuje już kompilacji.
-    * **Render Build Command:** `npm install` (Tylko instalacja)
-    * **Render Start Command:** `node index.js` (Uruchomienie czystego JS)
-
-2.  **Upewnij się, że usunąłeś stary `index.ts`** z repozytorium GitHub i że plik **`index.js`** jest we właściwym miejscu.
-
-3.  **Zrób commit i wypchnij zmiany:**
-
-    ```bash
-    git add .
-    git commit -m "Final critical fix: Switched to pure JavaScript (index.js) to bypass all TypeScript compilation errors on Render."
-    git push origin main
-    
