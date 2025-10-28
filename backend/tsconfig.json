@@ -10,18 +10,27 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
 
-    // --- DODANO W CELU KOPIOWANIA PLIKÓW JS/JSON ---
     "allowJs": true,
     "checkJs": true,
-    // Pliki JS (jak trackerScraper.js) będą kopiowane
     "moduleResolution": "Node",
-    "types": ["node"]
+    "types": ["node", "axios"]
   },
   "include": [
     "./**/*.ts",
-    "./**/*.js" // Wymuś kompilator na uwzględnienie JS
+    "./**/*.js" 
   ],
   "exclude": [
     "node_modules"
   ]
 }
+```
+
+### 🚀 Następne kroki:
+
+1.  **Zastąp** zawartość pliku `backend/tsconfig.json` w Canvas powyższym kodem.
+2.  **Zrób commit i wypchnij zmiany** do GitHub:
+    ```bash
+    git add .
+    git commit -m "Fix: Added 'axios' to types in tsconfig to resolve .get() error on Render"
+    git push origin main
+    
