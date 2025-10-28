@@ -1,357 +1,259 @@
-// backend/index.ts
-import express, { Request, Response, NextFunction } from 'express';
-import cors from 'cors';
-import { Pool } from 'pg';
-import bcrypt from 'bcryptjs'; // WAŻNA ZMIANA: Zastąpienie "bcrypt" na "bcryptjs"
-import jwt from 'jsonwebtoken';
-import 'dotenv/config';
-import axios from 'axios';
-import { scrapeStats, TrackerStats } from './utils/trackerScraper';
-import { validateRegistration, validateLogin } from './utils/validation';
-import { sendVerificationEmail, sendPasswordResetEmail } from './utils/mailer';
+// backend/index.js
+const express = require('express');
+const cors = require('cors');
+const { Pool } = require('pg');
+const bcrypt = require('bcryptjs'); // Używamy bcryptjs (Czysty JS)
+const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const nodemailer = require('nodemailer'); 
+const { getKdRatio } = require('./utils/trackerScraper');
 
-// --- Konfiguracja ---
+// --- KONFIGURACJA ---
 const app = express();
-const PORT = process.env.PORT || 5000;
-const SECRET_KEY = process.env.JWT_SECRET || 'your_secret_key'; // Klucz do tokenów JWT
-const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:8081';
+const PORT = 3000;
+const JWT_SECRET = process.env.JWT_SECRET || 'TWOJ_BARDZO_TAJNY_KLUCZ_JWT'; 
+const BASE_URL = process.env.BASE_URL || 'https://bf6-tracker-backend.onrender.com'; 
 
-// Połączenie z PostgreSQL
+// --- MIDDLEWARES ---
+app.use(cors());
+app.use(express.json());
+
+// --- KONFIGURACJA BAZY DANYCH (Używa zmiennych środowiskowych) ---
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  user: process.env.DB_USER || 'postgres',
+  host: process.env.DB_HOST || 'localhost',
+  database: process.env.DB_NAME || 'bf6_tracker',
+  password: process.env.DB_PASSWORD || 'Talon1990',
+  port: parseInt(process.env.DB_PORT || '5432'),
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
 });
 
-// Middleware
-app.use(cors({
-  origin: CLIENT_URL,
-  credentials: true
-}));
-app.use(express.json()); // Do parsowania JSON z body requestu
 
-// --- Walidacja tokenu JWT ---
-interface AuthRequest extends Request {
-  user?: { id: number; email: string };
-}
+// Sprawdzenie połączenia z bazą danych
+pool.query('SELECT NOW()', (err, res) => {
+  if (err) {
+    console.error('Błąd połączenia z PostgreSQL:', err.message);
+  } else {
+    console.log(`✅ Połączenie z PostgreSQL nawiązane. Czas serwera: ${res.rows[0].now}`);
+  }
+});
 
-const authenticateToken = (req: AuthRequest, res: Response, next: NextFunction) => {
-  const authHeader = req.headers['authorization'];
+// --- AUTH MIDDLEWARE ---
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.split(' ')[1];
+  if (token == null) return res.sendStatus(401);
 
-  if (token == null) return res.sendStatus(401); // Brak tokenu
-
-  jwt.verify(token, SECRET_KEY, (err: any, user: any) => {
-    if (err) return res.sendStatus(403); // Nieprawidłowy/wygaśnięty token
-    req.user = user as { id: number; email: string };
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) return res.sendStatus(403);
+    req.user = user;
     next();
   });
 };
 
-// --- Funkcje pomocnicze bazy danych ---
 
-// Znajduje użytkownika po adresie email
-async function findUserByEmail(email: string) {
-  try {
-    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
-    return result.rows[0];
-  } catch (error) {
-    console.error('Błąd podczas szukania użytkownika:', error);
-    throw new Error('Database query failed');
+// --- Funkcja do wysyłania emaila (SYMULACJA/KONFIGURACJA) ---
+const sendVerificationEmail = async (email, token) => {
+  const currentBaseUrl = process.env.BASE_URL || BASE_URL;
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      console.log(`[EMAIL SYMULACJA] BŁĄD: Brakuje konfiguracji EMAIL_USER/PASS. Symuluję wysłanie.`);
+      console.log(`[EMAIL SYMULACJA] Link do weryfikacji: ${currentBaseUrl}/api/verify-email?token=${token}`);
+      return;
   }
-}
+  // W przypadku rzeczywistej wysyłki...
+};
 
-// Znajduje użytkownika po ID
-async function findUserById(id: number) {
+
+// --- LOGIKA CYKLICZNEJ AKTUALIZACJI ---
+const cyclicUpdate = async () => {
+  console.log(`--- START CYKLICZNEJ AKTUALIZACJI DRABINKI: ${new Date().toLocaleTimeString()} ---`);
+  const client = await pool.connect();
   try {
-    const result = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
-    return result.rows[0];
+    const res = await client.query('SELECT player_id, player_name, platform FROM players');
+    for (const player of res.rows) {
+      try {
+        const { kdRatio, kills, deaths } = await getKdRatio(player.player_name, player.platform);
+        await client.query(
+          'UPDATE players SET kd_ratio = $1, total_kills = $2, total_deaths = $3, last_updated = NOW() WHERE player_id = $4',
+          [kdRatio, kills, deaths, player.player_id]
+        );
+        const currentKd = parseFloat(kdRatio || '0');
+        console.log(`[AKTUALIZACJA] Gracz: ${player.player_name}, K/D: ${currentKd.toFixed(3)}`);
+      } catch (playerError) {
+        if (playerError instanceof Error) console.error(`Błąd aktualizacji gracza ${player.player_name}:`, playerError.message);
+        else console.error(`Błąd aktualizacji gracza ${player.player_name}:`, playerError);
+      }
+    }
   } catch (error) {
-    console.error('Błąd podczas szukania użytkownika:', error);
-    throw new Error('Database query failed');
+    if (error instanceof Error) console.error('Błąd podczas cyklicznej aktualizacji (główny):', error.message);
+    else console.error('Błąd podczas cyklicznej aktualizacji (główny):', error);
+  } finally {
+    client.release();
+    console.log('--- KONIEC CYKLICZNEJ AKTUALIZACJI DRABINKI ---');
   }
-}
+};
+setTimeout(cyclicUpdate, 5000);
+setInterval(cyclicUpdate, 600000);
 
-// Zapisuje użytkownika w bazie danych
-async function saveUser(email: string, hashedPassword: string, verificationToken: string) {
+
+// --- ENDPOINTY API ---
+
+// POST /api/register
+app.post('/api/register', async (req, res) => {
+  const { username, password, email, playerName, platform, countryCode } = req.body;
+  if (!username || !password || !email || !playerName || !platform || !countryCode || countryCode.length !== 2) {
+    return res.status(400).json({ message: "Wszystkie pola (w tym email i kod kraju) są wymagane." });
+  }
+  if (!/\S+@\S+\.\S+/.test(email)) return res.status(400).json({ message: "Nieprawidłowy format adresu email." });
+
+  const client = await pool.connect();
   try {
-    const result = await pool.query(
-      'INSERT INTO users (email, password_hash, verification_token, is_verified, created_at) VALUES ($1, $2, $3, FALSE, NOW()) RETURNING id, email',
-      [email, hashedPassword, verificationToken]
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+
+    await client.query('BEGIN');
+    const userInsertResult = await client.query(
+      "INSERT INTO users (username, password_hash, email, is_verified, verification_token) VALUES ($1, $2, $3, false, $4) RETURNING user_id",
+      [username, hashedPassword, email, verificationToken]
     );
-    return result.rows[0];
+    const userId = userInsertResult.rows[0].user_id;
+
+    const { kdRatio, kills, deaths } = await getKdRatio(playerName, platform);
+    await client.query(
+      "INSERT INTO players (user_id, player_name, platform, kd_ratio, total_kills, total_deaths, country_code, last_updated) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())",
+      [userId, playerName, platform, kdRatio || 0, kills || 0, deaths || 0, countryCode.toUpperCase()]
+    );
+    await client.query('COMMIT');
+
+    sendVerificationEmail(email, verificationToken);
+
+    res.status(201).json({ message: "Rejestracja pomyślna. Sprawdź swój email, aby aktywować konto." });
+
   } catch (error) {
-    console.error('Błąd podczas zapisywania użytkownika:', error);
-    throw new Error('Database insert failed');
-  }
-}
-
-// Aktualizuje pole is_verified
-async function verifyUser(token: string) {
-  try {
-    const result = await pool.query('UPDATE users SET is_verified = TRUE, verification_token = NULL WHERE verification_token = $1 RETURNING id', [token]);
-    return result.rows[0];
-  } catch (error) {
-    console.error('Błąd podczas weryfikacji użytkownika:', error);
-    throw new Error('Database update failed');
-  }
-}
-
-// --- Endpoints Publiczne ---
-
-// Rejestracja użytkownika
-app.post('/api/auth/register', async (req: Request, res: Response) => {
-  const { email, password } = req.body;
-
-  const validationError = validateRegistration(email, password);
-  if (validationError) {
-    return res.status(400).json({ message: validationError });
-  }
-
-  try {
-    // 1. Sprawdź, czy użytkownik istnieje
-    if (await findUserByEmail(email)) {
-      return res.status(409).json({ message: 'Użytkownik z tym adresem email już istnieje.' });
+    await client.query('ROLLBACK');
+    let errorMessage = 'Wystąpił błąd serwera';
+    if (error instanceof Error) errorMessage = error.message;
+    console.error(`[SERWER BŁĄD /api/register] ${errorMessage}`);
+    if (errorMessage.includes('duplicate key value violates unique constraint')) {
+       if (errorMessage.includes('users_username_key')) return res.status(409).json({ message: "Nazwa użytkownika jest już zajęta." });
+       if (errorMessage.includes('users_email_key')) return res.status(409).json({ message: "Adres email jest już zajęty." });
+       if (errorMessage.includes('players_')) return res.status(409).json({ message: "Gracz jest już powiązany." });
     }
-
-    // 2. Hashowanie hasła (używając bcryptjs)
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    // 3. Generowanie tokenu weryfikacyjnego
-    const verificationToken = jwt.sign({ email }, SECRET_KEY, { expiresIn: '1d' });
-
-    // 4. Zapisz użytkownika
-    const newUser = await saveUser(email, hashedPassword, verificationToken);
-
-    // 5. Wyślij email weryfikacyjny
-    await sendVerificationEmail(email, verificationToken);
-
-    res.status(201).json({ 
-      message: 'Rejestracja pomyślna. Sprawdź swoją skrzynkę pocztową, aby zweryfikować konto.',
-      userId: newUser.id,
-      email: newUser.email
-    });
-  } catch (error) {
-    console.error('Błąd rejestracji:', error);
-    res.status(500).json({ message: 'Wystąpił błąd podczas rejestracji.' });
-  }
-});
-
-// Weryfikacja emaila
-app.get('/api/auth/verify/:token', async (req: Request, res: Response) => {
-  const { token } = req.params;
-
-  try {
-    const verifiedUser = await verifyUser(token);
-    
-    if (verifiedUser) {
-      // Jeśli weryfikacja pomyślna, przekieruj na stronę logowania/powodzenia w aplikacji front-end
-      return res.redirect(`${CLIENT_URL}/verification-success`); 
-    } else {
-      // Jeśli token nie pasuje, przekieruj na stronę błędu
-      return res.redirect(`${CLIENT_URL}/verification-failed`);
-    }
-  } catch (error) {
-    console.error('Błąd weryfikacji tokenu:', error);
-    res.status(500).send('Wystąpił błąd podczas weryfikacji tokenu.');
+    res.status(500).json({ message: "Rejestracja nie powiodła się." });
+  } finally {
+    client.release();
   }
 });
 
 
-// Logowanie użytkownika
-app.post('/api/auth/login', async (req: Request, res: Response) => {
-  const { email, password } = req.body;
-  
-  const validationError = validateLogin(email, password);
-  if (validationError) {
-    return res.status(400).json({ message: validationError });
-  }
+// GET /api/verify-email (Endpoint do aktywacji konta)
+app.get('/api/verify-email', async (req, res) => {
+    const { token } = req.query;
+    if (!token || typeof token !== 'string') return res.status(400).send('Nieprawidłowy lub brakujący token.');
+    try {
+        const result = await pool.query(
+            'UPDATE users SET is_verified = true, verification_token = NULL WHERE verification_token = $1 RETURNING user_id',
+            [token]
+        );
+        if (result.rowCount === 1) {
+            res.status(200).send('<h1>Konto zostało pomyślnie aktywowane!</h1><p>Możesz teraz zalogować się do aplikacji.</p>');
+        } else {
+            res.status(400).send('<h1>Błąd aktywacji</h1><p>Nieprawidłowy lub wygasły token weryfikacyjny.</p>');
+        }
+    } catch (error) {
+        let errorMessage = 'Wystąpił błąd serwera';
+        if (error instanceof Error) errorMessage = error.message;
+        console.error(`[SERWER BŁĄD /api/verify-email] ${errorMessage}`);
+        res.status(500).send('<h1>Błąd serwera</h1><p>Nie udało się aktywować konta. Spróbuj ponownie później.</p>');
+    }
+});
 
+
+// POST /api/login
+app.post('/api/login', async (req, res) => {
   try {
-    const user = await findUserByEmail(email);
+    const { username, password } = req.body;
+    if (!username || !password) return res.status(400).json({ message: "Nazwa użytkownika i hasło są wymagane." });
 
-    // 1. Walidacja użytkownika
-    if (!user) {
-      return res.status(401).json({ message: 'Nieprawidłowy email lub hasło.' });
-    }
+    const userResult = await pool.query("SELECT * FROM users WHERE username = $1", [username]);
+    if (userResult.rows.length === 0) return res.status(401).json({ message: "Błędne dane." });
 
-    // 2. Walidacja hasła (używając bcryptjs)
-    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
-    if (!isPasswordValid) {
-      return res.status(401).json({ message: 'Nieprawidłowy email lub hasło.' });
-    }
-    
-    // 3. Sprawdzenie weryfikacji
+    const user = userResult.rows[0];
+
+    // Sprawdź, czy konto jest zweryfikowane
     if (!user.is_verified) {
-      return res.status(403).json({ message: 'Konto nie zostało zweryfikowane. Sprawdź swoją skrzynkę pocztową.' });
+      return res.status(403).json({ message: "Konto nie zostało aktywowane. Sprawdź swój email (również folder spam)." });
     }
 
-    // 4. Generowanie tokenu JWT
-    const token = jwt.sign({ id: user.id, email: user.email }, SECRET_KEY, { expiresIn: '1h' });
+    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+    if (!isPasswordValid) return res.status(401).json({ message: "Błędne dane." });
 
-    res.json({ token, user: { id: user.id, email: user.email } });
+    const token = jwt.sign({ userId: user.user_id, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
+    res.status(200).json({ message: "Logowanie pomyślne", token });
   } catch (error) {
-    console.error('Błąd logowania:', error);
-    res.status(500).json({ message: 'Wystąpił błąd podczas logowania.' });
+    let errorMessage = 'Wystąpił błąd serwera';
+    if (error instanceof Error) errorMessage = error.message;
+    console.error(`[SERWER BŁĄD /api/login] ${errorMessage}`);
+    res.status(500).json({ message: "Wystąpił błąd serwera." });
   }
 });
 
-// Reset hasła - krok 1: Żądanie resetu
-app.post('/api/auth/forgot-password', async (req: Request, res: Response) => {
-  const { email } = req.body;
-  
-  if (!email) {
-    return res.status(400).json({ message: 'Email jest wymagany.' });
-  }
 
+// POST /api/forgot-password (Symulacja)
+app.post('/api/forgot-password', async (req, res) => {
   try {
-    const user = await findUserByEmail(email);
-    if (!user) {
-      // Dla bezpieczeństwa, zawsze zwracaj tę samą odpowiedź, nawet jeśli email nie istnieje
-      return res.json({ message: 'Jeśli podany adres email istnieje w naszej bazie danych, link resetujący hasło został wysłany.' });
+    const { username } = req.body;
+    if (!username) return res.status(400).json({ message: "Nazwa użytkownika jest wymagana." });
+    const userResult = await pool.query("SELECT * FROM users WHERE username = $1", [username]);
+    if (userResult.rows.length > 0) {
+      console.log(`[RESET HASŁA] Żądanie dla: ${username}. SYMULACJA: Wysłano email.`);
+    } else {
+      console.log(`[RESET HASŁA] Żądanie dla nieistniejącego użytkownika: ${username}.`);
     }
-
-    // 1. Generowanie tokenu resetu
-    const resetToken = jwt.sign({ id: user.id }, SECRET_KEY, { expiresIn: '15m' });
-    
-    // 2. Zapisanie tokenu w bazie
-    await pool.query('UPDATE users SET reset_password_token = $1, reset_password_expires = NOW() + INTERVAL \'15 minutes\' WHERE id = $2', [resetToken, user.id]);
-    
-    // 3. Wysyłanie emaila
-    await sendPasswordResetEmail(email, resetToken);
-
-    res.json({ message: 'Jeśli podany adres email istnieje w naszej bazie danych, link resetujący hasło został wysłany.' });
-
+    res.status(200).json({ message: "Jeśli konto istnieje, link został wysłany." });
   } catch (error) {
-    console.error('Błąd zapomnianego hasła:', error);
-    res.status(500).json({ message: 'Wystąpił błąd serwera.' });
+    let errorMessage = 'Wystąpił błąd serwera';
+    if (error instanceof Error) errorMessage = error.message;
+    console.error(`[SERWER BŁĄD /api/forgot-password] ${errorMessage}`);
+    res.status(500).json({ message: "Wystąpił błąd serwera." });
   }
 });
 
-// Reset hasła - krok 2: Ustawienie nowego hasła
-app.post('/api/auth/reset-password/:token', async (req: Request, res: Response) => {
-  const { token } = req.params;
-  const { password } = req.body;
 
-  if (!password) {
-    return res.status(400).json({ message: 'Nowe hasło jest wymagane.' });
-  }
-
+// GET /api/leaderboard
+app.get('/api/leaderboard', authenticateToken, async (req, res) => {
   try {
-    // 1. Weryfikacja tokenu i daty wygaśnięcia
-    const result = await pool.query('SELECT * FROM users WHERE reset_password_token = $1 AND reset_password_expires > NOW()', [token]);
-    const user = result.rows[0];
-
-    if (!user) {
-      return res.status(400).json({ message: 'Nieprawidłowy lub wygasły token resetu hasła.' });
-    }
-
-    // 2. Hashowanie nowego hasła (używając bcryptjs)
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    // 3. Aktualizacja hasła i usunięcie tokenu resetu
-    await pool.query('UPDATE users SET password_hash = $1, reset_password_token = NULL, reset_password_expires = NULL WHERE id = $2', [hashedPassword, user.id]);
-
-    res.json({ message: 'Hasło zostało pomyślnie zresetowane.' });
-
-  } catch (error) {
-    console.error('Błąd resetowania hasła:', error);
-    res.status(500).json({ message: 'Wystąpił błąd serwera.' });
-  }
-});
-
-// --- Endpoints dla Tracker'a (Wymagane uwierzytelnienie) ---
-
-// Zapisuje/aktualizuje Battlefield ID dla zalogowanego użytkownika
-app.post('/api/profile/save-bf-id', authenticateToken, async (req: AuthRequest, res: Response) => {
-  const userId = req.user!.id;
-  const { battlefieldId, platform } = req.body; // platform: np. 'pc', 'psn', 'xbox'
-
-  if (!battlefieldId || !platform) {
-    return res.status(400).json({ message: 'Battlefield ID i platforma są wymagane.' });
-  }
-
-  try {
-    // Sprawdź, czy dane gracza są poprawne i pobierz podstawowe statystyki (np. nazwę)
-    // UWAGA: Wywołanie scrapeStats tutaj może być zbyt czasochłonne, ale jest to proste sprawdzenie
-    // W rzeczywistej aplikacji, to sprawdzenie może być asynchroniczne lub pobierać tylko podstawowe dane.
-    const stats: TrackerStats | null = await scrapeStats(battlefieldId, platform);
-
-    if (!stats) {
-       return res.status(404).json({ message: 'Nie znaleziono gracza o podanym ID lub platformie.' });
-    }
-
-    // Aktualizacja w bazie
-    await pool.query(
-      'UPDATE users SET battlefield_id = $1, platform = $2 WHERE id = $3',
-      [battlefieldId, platform, userId]
+    const leaderboardResult = await pool.query(
+      `SELECT
+          u.username, p.player_name, p.kd_ratio,
+          p.total_kills, p.total_deaths, p.country_code
+       FROM players p
+       JOIN users u ON u.user_id = p.user_id
+       ORDER BY p.kd_ratio DESC`
     );
 
-    res.json({ message: 'Battlefield ID i platforma zapisane pomyślnie.', stats });
+    const formattedLeaderboard = leaderboardResult.rows.map(item => ({
+      username: item.username,
+      player_name: item.player_name,
+      kd_ratio: parseFloat(item.kd_ratio || '0'),
+      total_kills: parseInt(item.total_kills || '0'),
+      total_deaths: parseInt(item.total_deaths || '0'),
+      country_code: item.country_code,
+    }));
+
+    res.status(200).json(formattedLeaderboard);
 
   } catch (error) {
-    console.error('Błąd zapisywania BF ID:', error);
-    res.status(500).json({ message: 'Wystąpił błąd serwera podczas zapisywania ID.' });
-  }
-});
-
-// Pobiera zapisany Battlefield ID dla zalogowanego użytkownika
-app.get('/api/profile/get-bf-id', authenticateToken, async (req: AuthRequest, res: Response) => {
-  const userId = req.user!.id;
-
-  try {
-    const user = await findUserById(userId);
-
-    if (user && user.battlefield_id && user.platform) {
-      res.json({ 
-        battlefieldId: user.battlefield_id,
-        platform: user.platform
-      });
-    } else {
-      res.status(404).json({ message: 'Nie znaleziono zapisanych danych Battlefield ID.' });
-    }
-  } catch (error) {
-    console.error('Błąd pobierania BF ID:', error);
-    res.status(500).json({ message: 'Wystąpił błąd serwera podczas pobierania ID.' });
-  }
-});
-
-// Pobiera statystyki dla zapisanego Battlefield ID
-app.get('/api/tracker/stats', authenticateToken, async (req: AuthRequest, res: Response) => {
-  const userId = req.user!.id;
-
-  try {
-    const user = await findUserById(userId);
-
-    if (!user || !user.battlefield_id || !user.platform) {
-      return res.status(400).json({ message: 'Battlefield ID i platforma nie są zapisane dla tego użytkownika.' });
-    }
-
-    const { battlefield_id, platform } = user;
-    
-    // Skrob statystyki
-    const stats: TrackerStats | null = await scrapeStats(battlefield_id, platform);
-
-    if (stats) {
-      res.json(stats);
-    } else {
-      res.status(404).json({ message: 'Nie można pobrać statystyk dla podanego Battlefield ID.' });
-    }
-
-  } catch (error) {
-    // Logowanie błędu skrobania
-    if (axios.isAxiosError(error)) {
-        console.error('Błąd Axios podczas skrobania:', error.message);
-    } else {
-        console.error('Nieznany błąd podczas pobierania statystyk:', error);
-    }
-    res.status(500).json({ message: 'Wystąpił błąd serwera podczas pobierania statystyk.' });
+    let errorMessage = 'Wystąpił błąd serwera';
+    if (error instanceof Error) errorMessage = error.message;
+    console.error(`[SERWER BŁĄD /api/leaderboard] ${errorMessage}`);
+    res.status(500).json({ message: "Nie udało się pobrać drabinki." });
   }
 });
 
 
-// Uruchomienie serwera
-app.listen(PORT, () => {
-  console.log(`Serwer backend działa na porcie ${PORT}`);
+// --- URUCHOMIENIE SERWERA ---
+app.listen(process.env.PORT || PORT, () => {
+  console.log(`Serwer działa na porcie ${process.env.PORT || PORT}`);
+  console.log(`Otwórz: http://localhost:${process.env.PORT || PORT}`);
 });
