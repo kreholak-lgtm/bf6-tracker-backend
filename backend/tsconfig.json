@@ -7,11 +7,9 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     
-    // --- LUZOWANIE REGUŁ DLA KOMPATYBILNOŚCI ---
     "strict": false,               
     "noImplicitAny": false,        
     "strictPropertyInitialization": false, 
-    // ---------------------------------------------
     
     "skipLibCheck": true,
     "resolveJsonModule": true,
@@ -31,14 +29,3 @@
     "**/*.test.ts"
   ]
 }
-```
-
-### 🚀 Następne kroki: Wypchnij poprawkę
-
-1.  **Zastąp** zawartość pliku `backend/tsconfig.json` powyższym kodem w Canvas.
-2.  **Zrób commit i wypchnij zmiany** do GitHub:
-    ```bash
-    git add .
-    git commit -m "Fix: Cleaned up final syntax errors in tsconfig.json"
-    git push origin main
-    
