@@ -2,7 +2,7 @@
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
-const bcrypt = require('bcryptjs'); // Zmieniono na bcryptjs
+const bcrypt = require('bcrypt'); // Zmieniono z powrotem na standardowy bcrypt
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer'); 
@@ -108,8 +108,7 @@ app.post('/api/register', async (req, res) => {
 
   const client = await pool.connect();
   try {
-    // UŻYWA bcryptjs
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 10); // UŻYWA bcrypt
     const verificationToken = crypto.randomBytes(32).toString('hex');
 
     await client.query('BEGIN');
@@ -258,4 +257,3 @@ app.listen(process.env.PORT || PORT, () => {
   console.log(`Serwer działa na porcie ${process.env.PORT || PORT}`);
   console.log(`Otwórz: http://localhost:${process.env.PORT || PORT}`);
 });
-
