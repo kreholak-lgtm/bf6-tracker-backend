@@ -2,11 +2,11 @@
   "name": "backend",
   "version": "1.0.0",
   "description": "Serwer backend dla aplikacji Battlefield Tracker",
-  "main": "dist/index.js",
+  "main": "index.js",
   "scripts": {
-    "dev": "nodemon --exec node index.js", // Zmiana na node
-    "build": "echo 'No build step required for pure JS' && exit 0", // Uproszczono build
-    "start": "node index.js", // Start czystego JS
+    "dev": "nodemon --exec node index.js",
+    "build": "echo 'No build step required for pure JS' && exit 0",
+    "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -14,7 +14,7 @@
   "license": "ISC",
   "dependencies": {
     "axios": "^1.7.2",
-    "bcryptjs": "^2.4.3", // Używamy bezpiecznego bcryptjs
+    "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
@@ -26,15 +26,3 @@
     "nodemon": "^3.1.0"
   }
 }
-```
-
-### 🚀 Krok 3: Wypchnięcie zmian
-
-1.  **Zmień nazwy plików:** Zmień nazwę pliku `backend/index.ts` na **`backend/index.js`**.
-2.  **Zapisz plik `backend/package.json`** (z nową konfiguracją).
-3.  **Zrób commit i wypchnij zmiany:**
-    ```bash
-    git add .
-    git commit -m "Final FIX: Switched to pure JS and simplified npm scripts to bypass native module errors."
-    git push origin main
-    
