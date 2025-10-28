@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "e2f10ce8-391c-4976-af2d-c7c7b0d484a6"
+      }
+    },
+    "android": {
+      "package": "com.krytianom.mobileapp"
+    }
+  }
+}
