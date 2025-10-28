@@ -2,7 +2,7 @@
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
-const bcrypt = require('bcrypt'); // Zmieniono z powrotem na standardowy bcrypt
+const bcrypt = require('bcryptjs'); // Używamy bcryptjs (Czysty JS)
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer'); 
@@ -108,7 +108,7 @@ app.post('/api/register', async (req, res) => {
 
   const client = await pool.connect();
   try {
-    const hashedPassword = await bcrypt.hash(password, 10); // UŻYWA bcrypt
+    const hashedPassword = await bcrypt.hash(password, 10);
     const verificationToken = crypto.randomBytes(32).toString('hex');
 
     await client.query('BEGIN');
