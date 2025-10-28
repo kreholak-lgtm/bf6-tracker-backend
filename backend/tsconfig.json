@@ -24,7 +24,7 @@
   "include": [
     "./**/*.ts",
     "./utils/**/*.js" 
-  ],
+, "index.js"  ],
   "exclude": [
     "node_modules",
     "**/*.spec.ts",
