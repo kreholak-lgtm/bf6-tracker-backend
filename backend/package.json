@@ -36,17 +36,3 @@
     "ts-node": "^10.9.2"
   }
 }
-```
-
-### 🛠️ Krok 2: Ostateczne wymuszenie zmian
-
-Wykonaj te komendy, aby **ponownie** wysłać czystą wersję do Render.
-
-1.  **Zapisz plik `package.json`** w Canvas.
-2.  **Zrób commit i wypchnij zmiany:**
-
-    ```bash
-    git add .
-    git commit -m "Final cleanup of package.json syntax (resolving JSON.parse error)"
-    git push origin main
-    
