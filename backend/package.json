@@ -5,8 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "nodemon --exec ts-node index.ts",
-    // Używamy -p tsconfig.json, aby wymusić na tsc użycie wyłącznie naszego pliku konfiguracyjnego.
-    "build": "tsc -p tsconfig.json && copyfiles -u 1 \"utils/**/*\" dist", 
+    "build": "tsc -p tsconfig.json", 
     "start": "node dist/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -37,14 +36,3 @@
     "ts-node": "^10.9.2"
   }
 }
-```
-
-### 🚀 Następne kroki:
-
-1.  **Zapisz plik `package.json`** w Canvas.
-2.  **Zrób commit i wypchnij zmiany** do GitHub, aby Render mógł rozpocząć nowe wdrożenie:
-    ```bash
-    git add .
-    git commit -m "Final build fix: Forcing tsc to use tsconfig.json path"
-    git push origin main
-    
