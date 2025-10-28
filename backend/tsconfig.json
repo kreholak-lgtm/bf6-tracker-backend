@@ -17,11 +17,13 @@
     "allowJs": true,
     "checkJs": false, 
     "moduleResolution": "Node",
-    "types": ["node", "axios"]
+    // --- JAWNE DODANIE TYPÓW (NAPRAWIA BŁĘDY) ---
+    "types": ["node", "axios", "jsonwebtoken", "bcryptjs", "nodemailer", "pg", "cors"]
+    // ----------------------------------------------
   },
   "include": [
     "./**/*.ts",
-    "./utils/**/*.js"
+    "./utils/**/*.js" 
   ],
   "exclude": [
     "node_modules",
