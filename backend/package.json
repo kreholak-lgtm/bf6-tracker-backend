@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "nodemon --exec ts-node index.ts",
-    "build": "tsc && cp -r utils dist/utils",
+    "build": "tsc && copyfiles -u 1 \"utils/**/*\" dist", 
     "start": "node dist/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
