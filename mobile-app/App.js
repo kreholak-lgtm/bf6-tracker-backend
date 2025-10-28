@@ -1,16 +1,16 @@
 // mobile-app/App.js
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TextInput, Button, ActivityIndicator, FlatList, Alert, ImageBackground, TouchableOpacity, ScrollView, Platform } from 'react-native'; // Dodano Platform
+import React, { useState, useEffect, useMemo } from 'react';
+import { StyleSheet, Text, View, TextInput, Button, ActivityIndicator, FlatList, Alert, ImageBackground, TouchableOpacity, Platform } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import RNPickerSelect from 'react-native-picker-select'; // Import biblioteki
+import RNPickerSelect from 'react-native-picker-select';
 
 // Ładujemy obraz tła LOKALNIE
 const localBackgroundImage = require('./assets/battlefield_bg.jpg');
 
 // Adres IP serwera backend
-const API_BASE_URL = 'https://bf6-tracker-backend.onrender.com';
+const API_BASE_URL = 'http://192.168.1.100:3000'; // Zmień na publiczny URL Render.com
 
 const api = axios.create({ baseURL: API_BASE_URL });
 api.interceptors.request.use(
@@ -20,6 +20,59 @@ api.interceptors.request.use(
     return config;
   }, (error) => Promise.reject(error)
 );
+
+// --- 1. STRUKTURA TŁUMACZEŃ (I18N) ---
+const translations = {
+    PL: {
+        TITLE_MAIN: "Drabinka K/D Zarejestrowanych Graczy",
+        LOGIN_TITLE: "BF6 Tracker: Logowanie",
+        LOGIN_BUTTON: "Zaloguj",
+        LOGOUT_BUTTON: "Wyloguj",
+        REGISTER_GO: "Przejdź do Rejestracji",
+        FORGOT_PASS: "Zapomniałem hasła",
+        LOADING: "Ładowanie...",
+        PLACEHOLDER_USER: "Nazwa użytkownika",
+        PLACEHOLDER_PASS: "Hasło",
+        PLACEHOLDER_EMAIL: "Adres email",
+        REGISTER_TITLE: "Rejestracja",
+        REGISTER_SUBTITLE: "Utwórz konto, podaj email, nazwę gracza i wybierz kraj.",
+        REGISTER_BUTTON: "Zarejestruj & Połącz Grę",
+        PLACEHOLDER_PLAYER: "Nazwa gracza (np. n0sinner)",
+        SELECT_COUNTRY: "Wybierz kraj...",
+        STATS_KILLS: "Zabicia",
+        STATS_DEATHS: "Śmierci",
+        STATS_UPDATED: "Dane aktualizowane co 10 minut.",
+        ALERT_SUCCESS: "Sukces",
+        ALERT_REGISTER_SUCCESS: "Konto prawie gotowe! Sprawdź email, aby aktywować konto.",
+        BUTTON_BACK: "Wróć do Logowania",
+        LANG_SWITCH: "Zmień język",
+    },
+    EN: {
+        TITLE_MAIN: "Registered Players K/D Leaderboard",
+        LOGIN_TITLE: "BF6 Tracker: Login",
+        LOGIN_BUTTON: "Login",
+        LOGOUT_BUTTON: "Logout",
+        REGISTER_GO: "Go to Registration",
+        FORGOT_PASS: "Forgot password",
+        LOADING: "Loading...",
+        PLACEHOLDER_USER: "Username",
+        PLACEHOLDER_PASS: "Password",
+        PLACEHOLDER_EMAIL: "Email address",
+        REGISTER_TITLE: "Registration",
+        REGISTER_SUBTITLE: "Create account, provide email, player name, and select country.",
+        REGISTER_BUTTON: "Register & Link Game",
+        PLACEHOLDER_PLAYER: "Player Name (e.g., n0sinner)",
+        SELECT_COUNTRY: "Select country...",
+        STATS_KILLS: "Kills",
+        STATS_DEATHS: "Deaths",
+        STATS_UPDATED: "Data updated every 10 minutes.",
+        ALERT_SUCCESS: "Success",
+        ALERT_REGISTER_SUCCESS: "Account almost ready! Check your email to activate account.",
+        BUTTON_BACK: "Back to Login",
+        LANG_SWITCH: "Change Language",
+    }
+};
+
 
 // --- Funkcja do konwersji kodu kraju na flagę emoji ---
 const countryCodeToEmoji = (code) => {
@@ -31,18 +84,14 @@ const countryCodeToEmoji = (code) => {
   catch (e) { console.warn(`Nie można utworzyć flagi dla kodu: ${code}`, e); return ''; }
 }
 
-// Lista krajów dla Pickera (label: Nazwa, value: Kod)
+// Lista krajów dla Pickera
 const countryItems = [
-    { label: '🇵🇱 Polska', value: 'PL' },
-    { label: '🇬🇧 Wielka Brytania', value: 'GB' },
-    { label: '🇺🇸 Stany Zjednoczone', value: 'US' },
-    { label: '🇩🇪 Niemcy', value: 'DE' },
-    { label: '🇫🇷 Francja', value: 'FR' },
-    { label: '🇺🇦 Ukraina', value: 'UA' },
-    { label: '🇸🇪 Szwecja', value: 'SE' },
-    { label: '🇳🇴 Norwegia', value: 'NO' },
-    // Możesz dodać więcej krajów
+    { label: '🇵🇱 Polska', value: 'PL' }, { label: '🇬🇧 Wielka Brytania', value: 'GB' },
+    { label: '🇺🇸 Stany Zjednoczone', value: 'US' }, { label: '🇩🇪 Niemcy', value: 'DE' },
+    { label: '🇫🇷 Francja', value: 'FR' }, { label: '🇺🇦 Ukraina', value: 'UA' },
+    { label: '🇸🇪 Szwecja', value: 'SE' }, { label: '🇳🇴 Norwegia', value: 'NO' },
 ];
+
 
 // --- Komponent tła ---
 const AuthBackground = React.memo(({ children }) => (
@@ -53,16 +102,41 @@ const AuthBackground = React.memo(({ children }) => (
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
-  const [screen, setScreen] = useState('LOGIN');
+  const [screen, setScreen] = useState('LOGIN'); 
   const [token, setToken] = useState(null);
+  
+  // --- STAN JĘZYKA ---
+  const [language, setLanguage] = useState('PL'); 
+
+  // Wybieramy tłumaczenia na podstawie aktywnego języka
+  const t = useMemo(() => translations[language] || translations.PL, [language]);
+
+
+  // Stany formularzy
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('');
   const [playerName, setPlayerName] = useState('');
-  const [countryCode, setCountryCode] = useState(null); // Zmieniono na null dla Pickera
+  const [countryCode, setCountryCode] = useState(null); 
   const [emailForReset, setEmailForReset] = useState('');
   const [leaderboard, setLeaderboard] = useState([]);
 
+
+  // Używamy tego useEffect do wczytywania języka z AsyncStorage
   useEffect(() => {
+    const loadSettings = async () => {
+        try {
+            const savedLang = await AsyncStorage.getItem('appLanguage');
+            if (savedLang) {
+                setLanguage(savedLang);
+            }
+        } catch (e) {
+            console.error("Failed to load language:", e);
+        }
+    };
+    loadSettings();
+
+    // Ładowanie stanu autoryzacji
     const checkAuth = async () => {
       const storedToken = await AsyncStorage.getItem('token');
       if (storedToken) { setToken(storedToken); await fetchLeaderboard(storedToken); }
@@ -70,6 +144,13 @@ export default function App() {
     };
     checkAuth();
   }, []);
+  
+  // --- Ustawia i zapisuje język ---
+  const setAppLanguage = async (langCode) => {
+      setLanguage(langCode);
+      await AsyncStorage.setItem('appLanguage', langCode);
+  };
+
 
   const fetchLeaderboard = async (current_token = token) => {
     if (!current_token) { setIsLoading(false); setScreen('LOGIN'); return; }
@@ -80,31 +161,31 @@ export default function App() {
     } catch (error) {
       console.error('Błąd pobierania drabinki:', error.response?.status || error.message);
       if (error.response?.status === 401 || error.response?.status === 403) {
-        Alert.alert('Sesja wygasła', 'Zaloguj się ponownie.'); handleLogout();
-      } else { Alert.alert('Błąd', 'Nie udało się pobrać drabinki.'); }
+        Alert.alert(t.ALERT_SUCCESS, t.ALERT_SESSION_EXPIRED || "Sesja wygasła. Zaloguj się ponownie."); handleLogout();
+      } else { Alert.alert(t.ALERT_SUCCESS, t.ALERT_FETCH_FAILED || "Nie udało się pobrać drabinki."); }
     } finally { setIsLoading(false); }
   };
 
   const handleRegister = async () => {
-    // Walidacja - sprawdź czy countryCode zostało wybrane
-    if (!username || !password || !playerName || !countryCode) {
-      Alert.alert('Błąd', 'Wszystkie pola (w tym wybór kraju) są wymagane.'); return;
+    if (!username || !password || !email || !playerName || !countryCode) {
+      Alert.alert(t.ALERT_SUCCESS, "Wszystkie pola są wymagane."); return;
     }
-    // Dalsza walidacja (np. długość kodu) nie jest już potrzebna, bo wybieramy z listy
+    if (!/\S+@\S+\.\S+/.test(email)) { Alert.alert(t.ALERT_SUCCESS, "Nieprawidłowy format emaila."); return; }
+
     try {
       setIsLoading(true);
       const platform = 'PC';
-      const response = await api.post('/api/register', { username, password, playerName, platform, countryCode });
-      Alert.alert('Sukces', 'Konto utworzone.'); setUsername(''); setPassword(''); setPlayerName(''); setCountryCode(null); setScreen('LOGIN');
+      const response = await api.post('/api/register', { username, password, email, playerName, platform, countryCode });
+      Alert.alert(t.ALERT_SUCCESS, t.ALERT_REGISTER_SUCCESS); 
+      setUsername(''); setEmail(''); setPassword(''); setPlayerName(''); setCountryCode(null); setScreen('LOGIN');
     } catch (error) {
-      console.error('Błąd rejestracji:', error.response?.data || error.message);
-      const errorMessage = error.response?.data?.message || 'Rejestracja nie powiodła się.';
-      Alert.alert('Błąd', errorMessage);
+      const errorMessage = error.response?.data?.message || t.ALERT_REGISTER_FAILED;
+      Alert.alert(t.ALERT_SUCCESS, errorMessage);
     } finally { setIsLoading(false); }
   };
 
   const handleLogin = async () => {
-    if (!username || !password) { Alert.alert('Błąd', 'Nazwa użytkownika i hasło są wymagane.'); return; }
+    if (!username || !password) { Alert.alert(t.ALERT_SUCCESS, "Wszystkie pola są wymagane."); return; }
     try {
       setIsLoading(true);
       const response = await api.post('/api/login', { username, password });
@@ -112,100 +193,115 @@ export default function App() {
       await AsyncStorage.setItem('token', newToken); setToken(newToken); setUsername(''); setPassword('');
       await fetchLeaderboard(newToken);
     } catch (error) {
-      console.error('Błąd logowania:', error.response?.data || error.message);
-      Alert.alert('Błąd', 'Logowanie nie powiodło się.');
+      if (error.response?.status === 403) { Alert.alert(t.ALERT_SUCCESS, "Konto nieaktywne. Sprawdź email."); }
+      else { Alert.alert(t.ALERT_SUCCESS, "Logowanie nie powiodło się. Błędne dane."); }
     } finally { setIsLoading(false); }
   };
 
   const handleForgotPassword = async () => {
-    if (!emailForReset) { Alert.alert('Błąd', 'Nazwa użytkownika jest wymagana.'); return; }
+    if (!emailForReset) { Alert.alert(t.ALERT_SUCCESS, "Nazwa użytkownika jest wymagana."); return; }
     try {
       setIsLoading(true);
       const response = await api.post('/api/forgot-password', { username: emailForReset });
-      Alert.alert('Gotowe', response.data.message); setScreen('LOGIN'); setEmailForReset('');
-    } catch (error) {
-      console.error('Błąd resetowania hasła:', error.response?.data || error.message);
-      Alert.alert('Błąd', 'Wystąpił błąd.');
-    } finally { setIsLoading(false); }
+      Alert.alert(t.ALERT_SUCCESS, response.data.message); setScreen('LOGIN'); setEmailForReset('');
+    } catch (error) { Alert.alert(t.ALERT_SUCCESS, "Wystąpił błąd."); } finally { setIsLoading(false); }
   };
 
   const handleLogout = async () => {
     await AsyncStorage.removeItem('token'); setToken(null); setLeaderboard([]); setScreen('LOGIN');
   };
 
+
+  // --- EKRANY RENDERUJĄCE ---
+
   if (isLoading && screen !== 'LEADERBOARD') {
-    return (<View style={styles.loadingScreen}><ActivityIndicator size="large" color="#fff" /><Text style={styles.loadingText}>Ładowanie...</Text></View>);
+    return (<View style={styles.loadingScreen}><ActivityIndicator size="large" color="#fff" /><Text style={styles.loadingText}>{t.LOADING}</Text></View>);
   }
 
+  // --- KOMPONENT PRZEŁĄCZNIKA JĘZYKA (Umieszczony na stałe) ---
+  const RenderLanguageSwitch = () => (
+    <SafeAreaView style={styles.languageToggleContainer}>
+        <TouchableOpacity onPress={() => setAppLanguage('PL')} style={styles.langButtonFlag}>
+            <Text style={language === 'PL' ? styles.langButtonTextActive : styles.langButtonText}>🇵🇱</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setAppLanguage('EN')} style={styles.langButtonFlag}>
+            <Text style={language === 'EN' ? styles.langButtonTextActive : styles.langButtonText}>🇬🇧</Text>
+        </TouchableOpacity>
+    </SafeAreaView>
+  );
+
+  // Ekran Logowania
   if (screen === 'LOGIN') {
     return (
       <AuthBackground>
-        <Text style={styles.title}>BF6 Tracker: Logowanie</Text>
-        <TextInput key="login-username" style={styles.input} placeholder="Nazwa użytkownika" value={username} onChangeText={setUsername} autoCapitalize="none" placeholderTextColor="#ddd"/>
-        <TextInput key="login-password" style={styles.input} placeholder="Hasło" value={password} onChangeText={setPassword} secureTextEntry placeholderTextColor="#ddd"/>
-        <Button title="Zaloguj" onPress={handleLogin} color="#007AFF" />
+        <Text style={styles.title}>{t.LOGIN_TITLE}</Text>
+        <TextInput key="login-username" style={styles.input} placeholder={t.PLACEHOLDER_USER} value={username} onChangeText={setUsername} autoCapitalize="none" placeholderTextColor="#ddd"/>
+        <TextInput key="login-password" style={styles.input} placeholder={t.PLACEHOLDER_PASS} value={password} onChangeText={setPassword} secureTextEntry placeholderTextColor="#ddd"/>
+        <Button title={t.LOGIN_BUTTON} onPress={handleLogin} color="#007AFF" />
         <View style={styles.separator} />
-        <Button title="Zapomniałem hasła" onPress={() => setScreen('FORGOT_PASSWORD')} color="#aaa" />
+        <Button title={t.FORGOT_PASS} onPress={() => setScreen('FORGOT_PASSWORD')} color="#aaa" />
         <View style={styles.separator} />
-        <Button title="Przejdź do Rejestracji" onPress={() => setScreen('REGISTER')} color="#4CAF50" />
+        <Button title={t.REGISTER_GO} onPress={() => setScreen('REGISTER')} color="#4CAF50" />
       </AuthBackground>
     );
   }
 
+  // Ekran Rejestracji
   if (screen === 'REGISTER') {
     return (
       <AuthBackground>
-        <Text style={styles.title}>Rejestracja</Text>
-        <Text style={styles.subtitle}>Utwórz konto, podaj nazwę gracza i wybierz kraj.</Text>
-        <TextInput key="register-username" style={styles.input} placeholder="Nazwa użytkownika" value={username} onChangeText={setUsername} autoCapitalize="none" placeholderTextColor="#ddd"/>
-        <TextInput key="register-password" style={styles.input} placeholder="Hasło" value={password} onChangeText={setPassword} secureTextEntry placeholderTextColor="#ddd"/>
-        <TextInput key="register-playername" style={styles.input} placeholder="Nazwa gracza (np. n0sinner)" value={playerName} onChangeText={setPlayerName} autoCapitalize="none" placeholderTextColor="#ddd"/>
+        <Text style={styles.title}>{t.REGISTER_TITLE}</Text>
+        <Text style={styles.subtitle}>{t.REGISTER_SUBTITLE}</Text>
+        <TextInput key="register-username" style={styles.input} placeholder={t.PLACEHOLDER_USER} value={username} onChangeText={setUsername} autoCapitalize="none" placeholderTextColor="#ddd"/>
+        <TextInput key="register-email" style={styles.input} placeholder={t.PLACEHOLDER_EMAIL} value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholderTextColor="#ddd"/>
+        <TextInput key="register-password" style={styles.input} placeholder={t.PLACEHOLDER_PASS} value={password} onChangeText={setPassword} secureTextEntry placeholderTextColor="#ddd"/>
+        <TextInput key="register-playername" style={styles.input} placeholder={t.PLACEHOLDER_PLAYER} value={playerName} onChangeText={setPlayerName} autoCapitalize="none" placeholderTextColor="#ddd"/>
 
-        {/* --- ZMIANA TUTAJ: Zamiast TextInput i ScrollView, używamy RNPickerSelect --- */}
         <View style={styles.pickerContainer}>
             <RNPickerSelect
-                placeholder={{ label: "Wybierz kraj...", value: null, color: '#9EA0A4' }}
+                placeholder={{ label: t.SELECT_COUNTRY, value: null, color: '#9EA0A4' }}
                 items={countryItems}
                 onValueChange={(value) => setCountryCode(value)}
                 style={pickerSelectStyles}
                 value={countryCode}
-                useNativeAndroidPickerStyle={false} // Dla spójnego wyglądu na Androidzie
+                useNativeAndroidPickerStyle={false}
             />
         </View>
-        {/* -------------------------------------------------------------------------- */}
 
-        <Button title="Zarejestruj & Połącz Grę" onPress={handleRegister} color="#4CAF50" />
+        <Button title={t.REGISTER_BUTTON} onPress={handleRegister} color="#4CAF50" />
         <View style={styles.separator} />
-        <Button title="Wróć do Logowania" onPress={() => setScreen('LOGIN')} color="#aaa" />
+        <Button title={t.BUTTON_BACK} onPress={() => setScreen('LOGIN')} color="#aaa" />
       </AuthBackground>
     );
   }
 
+  // Ekran Resetowania Hasła
   if (screen === 'FORGOT_PASSWORD') {
       return (
         <AuthBackground>
           <Text style={styles.title}>Resetowanie hasła</Text>
           <Text style={styles.subtitle}>Podaj nazwę użytkownika (symulacja).</Text>
-          <TextInput key="forgot-username" style={styles.input} placeholder="Nazwa użytkownika" value={emailForReset} onChangeText={setEmailForReset} autoCapitalize="none" placeholderTextColor="#ddd"/>
+          <TextInput key="forgot-username" style={styles.input} placeholder={t.PLACEHOLDER_USER} value={emailForReset} onChangeText={setEmailForReset} autoCapitalize="none" placeholderTextColor="#ddd"/>
           <Button title="Wyślij link" onPress={handleForgotPassword} color="#FF9800" />
           <View style={styles.separator} />
-          <Button title="Wróć do Logowania" onPress={() => setScreen('LOGIN')} color="#aaa" />
+          <Button title={t.BUTTON_BACK} onPress={() => setScreen('LOGIN')} color="#aaa" />
         </AuthBackground>
       );
   }
 
+  // Ekran Drabinki
   if (screen === 'LEADERBOARD') {
     return (
       <ImageBackground source={localBackgroundImage} style={styles.background} resizeMode="cover">
         <SafeAreaView style={styles.safeArea}>
           <View style={styles.leaderboardContainer}>
             <View style={styles.header}>
-              <Text style={styles.title}>Drabinka K/D Zarejestrowanych Graczy</Text>
-              <Button title="Wyloguj" onPress={handleLogout} color="#FF3B30" />
+              <Text style={styles.title}>{t.TITLE_MAIN}</Text>
+              <Button title={t.LOGOUT_BUTTON} onPress={handleLogout} color="#FF3B30" />
             </View>
-            <LeaderboardList leaderboard={leaderboard} refreshing={isLoading} onRefresh={fetchLeaderboard}/>
+            <LeaderboardList leaderboard={leaderboard} refreshing={isLoading} onRefresh={fetchLeaderboard} t={t} />
             <View style={styles.footer}>
-              <Text style={styles.footerText}>Dane aktualizowane co 10 minut.</Text>
+              <Text style={styles.footerText}>{t.STATS_UPDATED}</Text>
             </View>
             <Text style={styles.brandingTextBottom}>KREHA</Text>
           </View>
@@ -217,8 +313,8 @@ export default function App() {
   return (<View style={styles.loadingScreen}><Text style={{color: '#fff'}}>Błąd.</Text><Button title="Zaloguj" onPress={() => setScreen('LOGIN')} /></View>);
 }
 
-// Przywrócono wyświetlanie flagi emoji
-const LeaderboardList = ({ leaderboard, refreshing, onRefresh }) => (
+// Zaktualizowano komponent LeaderboardList
+const LeaderboardList = ({ leaderboard, refreshing, onRefresh, t }) => (
     <FlatList
         data={leaderboard}
         keyExtractor={(item) => item.username}
@@ -240,7 +336,7 @@ const LeaderboardList = ({ leaderboard, refreshing, onRefresh }) => (
                 </View>
                 <View style={styles.statsBlock}>
                     <Text style={styles.leaderboardKd}>{item.kd_ratio.toFixed(3)} K/D</Text>
-                    <Text style={styles.leaderboardStats}>Z: {item.total_kills} / Ś: {item.total_deaths}</Text>
+                    <Text style={styles.leaderboardStats}>{t.STATS_KILLS}: {item.total_kills} / {t.STATS_DEATHS}: {item.total_deaths}</Text>
                 </View>
               </View>
             );
@@ -254,7 +350,6 @@ const LeaderboardList = ({ leaderboard, refreshing, onRefresh }) => (
 
 // --- STYLE ---
 const styles = StyleSheet.create({
-  // ... (reszta stylów bez zmian, poza usunięciem sampleCodes*) ...
   loadingScreen: { flex: 1, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' },
   loadingText: { marginTop: 10, color: '#fff' },
   background: { flex: 1, width: '100%', height: '100%' },
@@ -285,9 +380,44 @@ const styles = StyleSheet.create({
   emptyText: { color: '#aaa', textAlign: 'center' },
   footer: { padding: 10, borderTopWidth: 1, borderColor: 'rgba(255, 255, 255, 0.1)', alignItems: 'center', backgroundColor: 'transparent' },
   footerText: { fontSize: 12, color: '#aaa', textShadowColor: 'rgba(0, 0, 0, 0.9)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 3 },
-  // Usunięto sampleCodesLabel, sampleCodesScroll, codeButton, codeButtonText
+  
+  // Nowe style dla przełącznika języka
+  langSwitchContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 20,
+      backgroundColor: 'rgba(10, 10, 10, 0.8)',
+      padding: 5,
+      borderRadius: 10,
+  },
+  langSwitchLabel: {
+      color: '#fff',
+      marginRight: 10,
+      fontSize: 14,
+  },
+  langButton: {
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 5,
+      marginHorizontal: 5,
+      backgroundColor: 'transparent',
+  },
+  langButtonActive: {
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 5,
+      marginHorizontal: 5,
+      backgroundColor: '#007AFF', // Aktywny kolor
+      borderWidth: 1,
+      borderColor: '#fff',
+  },
+  langButtonText: {
+      color: '#fff',
+      fontWeight: 'bold',
+  },
 
-  // Nowe style dla RNPickerSelect
+  // Style dla RNPickerSelect
   pickerContainer: {
     width: '90%',
     maxWidth: 300,
@@ -295,36 +425,10 @@ const styles = StyleSheet.create({
   },
 });
 
-// Oddzielne style dla RNPickerSelect (wymagane przez bibliotekę)
+// Oddzielne style dla RNPickerSelect
 const pickerSelectStyles = StyleSheet.create({
-  inputIOS: {
-    fontSize: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    borderWidth: 1,
-    borderColor: '#444',
-    borderRadius: 8,
-    color: 'white',
-    paddingRight: 30, // to ensure the text is never behind the icon
-    backgroundColor: 'rgba(50, 50, 50, 0.8)',
-  },
-  inputAndroid: {
-    fontSize: 16,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: '#444',
-    borderRadius: 8,
-    color: 'white',
-    paddingRight: 30, // to ensure the text is never behind the icon
-    backgroundColor: 'rgba(50, 50, 50, 0.8)',
-  },
-  placeholder: {
-    color: '#ddd',
-  },
-  iconContainer: { // Styl dla strzałki w dół
-    top: Platform.OS === 'ios' ? 10 : 15,
-    right: 15,
-  },
+  inputIOS: { fontSize: 16, paddingVertical: 12, paddingHorizontal: 10, borderWidth: 1, borderColor: '#444', borderRadius: 8, color: 'white', paddingRight: 30, backgroundColor: 'rgba(50, 50, 50, 0.8)' },
+  inputAndroid: { fontSize: 16, paddingHorizontal: 10, paddingVertical: 8, borderWidth: 1, borderColor: '#444', borderRadius: 8, color: 'white', paddingRight: 30, backgroundColor: 'rgba(50, 50, 50, 0.8)' },
+  placeholder: { color: '#ddd' },
+  iconContainer: { top: Platform.OS === 'ios' ? 10 : 15, right: 15 },
 });
-
