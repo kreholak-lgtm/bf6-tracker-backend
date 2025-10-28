@@ -17,9 +17,11 @@
     "allowJs": true,
     "checkJs": false, 
     "moduleResolution": "Node",
-    // --- JAWNE DODANIE TYPÓW (SYNCHRONIZACJA Z package.json) ---
-    "types": ["node", "axios", "jsonwebtoken", "nodemailer", "pg", "cors"] 
-    // -------------------------------------------------------------
+    // --- OSTATECZNA SYNCHRONIZACJA TYPÓW ---
+    // Używamy standardowych typów, eliminując konflikt z bcryptjs,
+    // którego typy są czasem kompilowane jako @types/bcrypt.
+    "types": ["node", "axios", "jsonwebtoken", "nodemailer", "pg", "cors", "bcrypt"]
+    // ----------------------------------------
   },
   "include": [
     "./**/*.ts",
