@@ -19,7 +19,7 @@
     "@types/nodemailer": "^6.4.15",
     "@types/pg": "^8.11.6",
     "axios": "^1.7.2",
-    "bcryptjs": "^2.4.3", <--- ZMIANA
+    "bcrypt": "^5.1.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
@@ -36,3 +36,17 @@
     "ts-node": "^10.9.2"
   }
 }
+```
+
+### 🛠️ Krok 2: Ostateczne wymuszenie zmian
+
+Wykonaj te komendy, aby **ponownie** wysłać czystą wersję do Render.
+
+1.  **Zapisz plik `package.json`** w Canvas.
+2.  **Zrób commit i wypchnij zmiany:**
+
+    ```bash
+    git add .
+    git commit -m "Final cleanup of package.json syntax (resolving JSON.parse error)"
+    git push origin main
+    
