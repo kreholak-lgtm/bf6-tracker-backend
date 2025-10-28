@@ -7,6 +7,7 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     
+    // Zrelaksowane reguły - klucz do pomyślnej kompilacji
     "strict": false,               
     "noImplicitAny": false,        
     "strictPropertyInitialization": false, 
@@ -17,11 +18,8 @@
     "allowJs": true,
     "checkJs": false, 
     "moduleResolution": "Node",
-    // --- OSTATECZNA SYNCHRONIZACJA TYPÓW ---
-    // Używamy standardowych typów, eliminując konflikt z bcryptjs,
-    // którego typy są czasem kompilowane jako @types/bcrypt.
-    "types": ["node", "axios", "jsonwebtoken", "nodemailer", "pg", "cors", "bcrypt"]
-    // ----------------------------------------
+    // JAWNA LISTA TYPÓW: Używamy standardowych, bezpiecznych nazw
+    "types": ["node", "axios", "jsonwebtoken", "nodemailer", "pg", "cors"]
   },
   "include": [
     "./**/*.ts",
