@@ -31,14 +31,3 @@
     "**/*.test.ts"
   ]
 }
-```
-
-### 🚀 Następne kroki:
-
-1.  **Zapisz plik `tsconfig.json`** w Canvas (jest już zaktualizowany).
-2.  **Zrób commit i wypchnij zmiany** do GitHub:
-    ```bash
-    git add .
-    git commit -m "Final critical fix: Synchronized tsconfig and package.json types"
-    git push origin main
-    
