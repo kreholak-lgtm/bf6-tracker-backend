@@ -17,9 +17,9 @@
     "allowJs": true,
     "checkJs": false, 
     "moduleResolution": "Node",
-    // --- JAWNE DODANIE TYPÓW (NAPRAWIA BŁĘDY) ---
-    "types": ["node", "axios", "jsonwebtoken", "bcryptjs", "nodemailer", "pg", "cors"]
-    // ----------------------------------------------
+    // --- POPRAWKA TUTAJ: USUNIĘTO STARE @types/bcrypt, DODANO JAWNY bcryptjs ---
+    "types": ["node", "axios", "jsonwebtoken", "nodemailer", "pg", "cors", "bcryptjs"] 
+    // --------------------------------------------------------------------------
   },
   "include": [
     "./**/*.ts",
@@ -31,3 +31,14 @@
     "**/*.test.ts"
   ]
 }
+```
+
+### 🚀 Następne kroki:
+
+1.  **Zapisz plik `backend/tsconfig.json`** w Canvas.
+2.  **Zrób commit i wypchnij zmiany** do GitHub:
+    ```bash
+    git add .
+    git commit -m "Final critical fix: Synced tsconfig.json types for bcryptjs on Render"
+    git push origin main
+    
