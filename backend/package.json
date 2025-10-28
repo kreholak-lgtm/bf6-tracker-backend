@@ -36,3 +36,23 @@
     "ts-node": "^10.9.2"
   }
 }
+```
+
+---
+
+### 🚀 Krok 2: Zmiana komendy w Panelu Render.com
+
+Ponieważ Render nie lubi komendy `npm run build` w połączeniu z `tsc`, musisz zmienić ustawienie **"Build Command"** w panelu Render.com.
+
+1.  **Otwórz Render.com** i przejdź do ustawień swojej usługi backend.
+2.  Zmień wartość pola **Build Command** na:
+
+    ```bash
+    npm install && tsc -p tsconfig.json && cp -r utils dist/utils
+    ```
+
+3.  Zmień wartość pola **Start Command** na:
+
+    ```bash
+    node dist/index.js
+    
