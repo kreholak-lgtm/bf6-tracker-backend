@@ -257,15 +257,3 @@ app.listen(process.env.PORT || PORT, () => {
   console.log(`Serwer działa na porcie ${process.env.PORT || PORT}`);
   console.log(`Otwórz: http://localhost:${process.env.PORT || PORT}`);
 });
-```
-
-### 🛠️ Krok 2: Wypchnięcie czystej wersji
-
-Wykonaj te komendy, aby **ponownie** wysłać czystą wersję do Render i wymusić nową kompilację zależności:
-
-1.  **Zrób commit i wypchnij zmiany:**
-    ```bash
-    git add .
-    git commit -m "Final critical fix: Pushed clean index.js to resolve native module error"
-    git push origin main
-    
