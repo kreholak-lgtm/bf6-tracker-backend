@@ -10,7 +10,7 @@ import RNPickerSelect from 'react-native-picker-select';
 const localBackgroundImage = require('./assets/battlefield_bg.jpg');
 
 // Adres IP serwera backend
-const API_BASE_URL = 'http://192.168.1.100:3000'; // Zmień na publiczny URL Render.com
+const API_BASE_URL = 'https://bf6-tracker-backend.onrender.com'; // Zmień na publiczny URL Render.com
 
 const api = axios.create({ baseURL: API_BASE_URL });
 api.interceptors.request.use(
