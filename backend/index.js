@@ -11,7 +11,7 @@ const { getKdRatio } = require('./utils/trackerScraper');
 // --- KONFIGURACJA ---
 const app = express();
 const PORT = 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'TWOJ_BARDZO_TAJNY_KLUCZ_JWT'; 
+const JWT_SECRET = process.env.JWT_SECRET || '9d604d684e012e5379a475221efc4052'; 
 const BASE_URL = process.env.BASE_URL || 'https://bf6-tracker-backend.onrender.com'; 
 
 // --- MIDDLEWARES ---
