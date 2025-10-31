@@ -11,7 +11,7 @@ const { getKdRatio } = require('./utils/trackerScraper');
 // --- KONFIGURACJA ---
 const app = express();
 const PORT = 3000;
-const JWT_SECRET = process.env.JWT_SECRET || '9d604d684e012e5379a475221efc4052'; 
+const JWT_SECRET = process.env.JWT_SECRET || 'TWOJ_BARDZO_TAJNY_KLUCZ_JWT'; 
 const BASE_URL = process.env.BASE_URL || 'https://bf6-tracker-backend.onrender.com'; 
 
 // --- MIDDLEWARES ---
@@ -20,12 +20,12 @@ app.use(express.json());
 
 // --- KONFIGURACJA BAZY DANYCH (Używa zmiennych środowiskowych) ---
 const pool = new Pool({
-  user: process.env.DB_USER, // Usunięto awaryjny 'postgres'
-  host: process.env.DB_HOST, // Usunięto awaryjny 'localhost'
-  database: process.env.DB_NAME, // Usunięto awaryjną nazwę
-  password: process.env.DB_PASSWORD, // Usunięto awaryjne hasło
+  user: process.env.DB_USER || 'postgres', // Pozostawiamy awaryjny user/db
+  host: process.env.DB_HOST || 'db.nzknmymlotdsfjftfjvz.supabase.co', // WAŻNA ZMIANA: AWARYJNY HOST SUPABASE
+  database: process.env.DB_NAME || 'postgres', 
+  password: process.env.DB_PASSWORD, 
   port: parseInt(process.env.DB_PORT || '5432'),
-  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : true, // Ustawiono true dla Supabase
 });
 
 
@@ -257,3 +257,15 @@ app.listen(process.env.PORT || PORT, () => {
   console.log(`Serwer działa na porcie ${process.env.PORT || PORT}`);
   console.log(`Otwórz: http://localhost:${process.env.PORT || PORT}`);
 });
+```
+
+### 🛠️ Krok 2: Wypchnięcie czystej wersji
+
+Wykonaj te komendy, aby **ponownie** wysłać czystą wersję do Render i wymusić nową kompilację zależności:
+
+1.  **Zrób commit i wypchnij zmiany:**
+    ```bash
+    git add .
+    git commit -m "Final critical fix: Pushed clean index.js to resolve native module error"
+    git push origin main
+    
