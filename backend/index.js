@@ -24,7 +24,7 @@ const pool = new Pool({
   host: process.env.DB_HOST || 'db.nzknmymlotdsfjftfjvz.supabase.co', // WAŻNA ZMIANA: AWARYJNY HOST SUPABASE
   database: process.env.DB_NAME || 'postgres', 
   password: process.env.DB_PASSWORD, 
-  port: parseInt(process.env.DB_PORT || '10000 '),
+  port: parseInt(process.env.DB_PORT || '5432 '),
   ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : true, // Ustawiono true dla Supabase
 });
 
