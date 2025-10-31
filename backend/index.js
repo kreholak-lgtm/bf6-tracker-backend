@@ -11,7 +11,7 @@ const { getKdRatio } = require('./utils/trackerScraper');
 // --- KONFIGURACJA ---
 const app = express();
 const PORT = 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'TWOJ_BARDZO_TAJNY_KLUCZ_JWT'; 
+const JWT_SECRET = process.env.JWT_SECRET || '9d604d684e012e5379a475221efc4052'; 
 const BASE_URL = process.env.BASE_URL || 'https://bf6-tracker-backend.onrender.com'; 
 
 // --- MIDDLEWARES ---
@@ -24,7 +24,7 @@ const pool = new Pool({
   host: process.env.DB_HOST || 'db.nzknmymlotdsfjftfjvz.supabase.co', // WAŻNA ZMIANA: AWARYJNY HOST SUPABASE
   database: process.env.DB_NAME || 'postgres', 
   password: process.env.DB_PASSWORD, 
-  port: parseInt(process.env.DB_PORT || '6543'),
+  port: parseInt(process.env.DB_PORT || '5432'),
   ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : true, // Ustawiono true dla Supabase
 });
 
