@@ -67,7 +67,7 @@ router.post('/register', async (req, res) => {
         await client.query('BEGIN'); // Rozpoczęcie transakcji
 
         // 3. Dodanie użytkownika do tabeli 'users'
-        // ZMIENIONO: 'hashed_password' na 'password_hash'
+        // ZMIENIONO: 'hashed_password' na 'password_hash' - SYNCHRONIZACJA Z OSTATNIM BŁĘDEM W BD
         const userInsertQuery = `
             INSERT INTO users (username, password_hash, email, verification_token, is_verified)
             VALUES ($1, $2, $3, $4, FALSE) 
@@ -232,20 +232,3 @@ router.get('/leaderboard', authenticateToken, async (req, res) => {
 
 
 module.exports = router;
-```
-
----
-## Krok do Wykonania
-
-Ten plik **`auth.js`** jest teraz w 100% zsynchronizowany z nazwą kolumny **`password_hash`** w Twojej bazie danych. To powinien być ostatni błąd związany ze schematem bazy danych.
-
-**Musisz teraz wykonać ostatni `git push` z tymi zmianami:**
-
-1.  **Zapisz** zaktualizowany plik `auth.js` na swoim komputerze.
-2.  **Wykonaj komendy Git w folderze backendu:**
-
-    ```bash
-    git add auth.js
-    git commit -m "Fix: Finalna synchronizacja nazwy kolumny hasla na 'password_hash'"
-    git push
-    
