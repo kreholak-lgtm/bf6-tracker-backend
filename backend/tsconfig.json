@@ -6,25 +6,36 @@
     "outDir": "./dist",
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    
-    // Zrelaksowane reguły - klucz do pomyślnej kompilacji
-    "strict": false,               
-    "noImplicitAny": false,        
-    "strictPropertyInitialization": false, 
-    
+
+    // Zrelaksowane reguły (z Twojej propozycji) - klucz do pomyślnej migracji
+    "strict": false,
+    "noImplicitAny": false,
+    "strictPropertyInitialization": false,
+
     "skipLibCheck": true,
     "resolveJsonModule": true,
 
+    // KLUCZOWE: Pozwalamy na pliki JavaScript, ale ich nie sprawdzamy
     "allowJs": true,
-    "checkJs": false, 
+    "checkJs": false,
+    
     "moduleResolution": "Node",
-    // JAWNA LISTA TYPÓW: Używamy standardowych, bezpiecznych nazw
-    "types": ["node", "axios", "jsonwebtoken", "nodemailer", "pg", "cors"]
+
+    // JAWNA LISTA TYPÓW: Zaktualizowana o pakiety z package.json
+    "types": [
+      "node",
+      "express", // Typy dla Express
+      "pg",      // Typy dla 'pg' (PostgreSQL)
+      "cors",    // Typy dla 'cors'
+      "bcrypt",  // Typy dla 'bcrypt'
+      "jsonwebtoken", // Typy dla 'jsonwebtoken'
+      "nodemailer"    // Typy dla 'nodemailer'
+    ]
   },
   "include": [
-    "./**/*.ts",
-    "./utils/**/*.js" 
-, "index.js"  ],
+    "./*.ts",     // Dołącz wszystkie nowe pliki TypeScript w głównym folderze
+    "./*.js"      // Dołącz istniejące pliki JS (index.js, auth.js, email.js)
+  ],
   "exclude": [
     "node_modules",
     "**/*.spec.ts",
