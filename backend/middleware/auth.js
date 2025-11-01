@@ -172,6 +172,7 @@ router.get('/leaderboard', authenticateToken, async (req, res) => {
     const client = await pool.connect();
     
     try {
+        // WAŻNE: Dodano jawne rzutowanie 'user_id' na INTEGER, aby uniknąć błędu 'uuid = integer' w PostgreSQL
         const query = `
             SELECT
                 u.username,
@@ -183,7 +184,7 @@ router.get('/leaderboard', authenticateToken, async (req, res) => {
             FROM
                 players p
             JOIN
-                users u ON u.user_id = p.user_id
+                users u ON u.user_id::INTEGER = p.user_id::INTEGER
             ORDER BY
                 p.kd_ratio DESC;
         `;
