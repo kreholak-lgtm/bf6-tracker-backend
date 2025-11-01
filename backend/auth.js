@@ -172,7 +172,7 @@ router.get('/leaderboard', authenticateToken, async (req, res) => {
     const client = await pool.connect();
     
     try {
-        // WAŻNE: Dodano jawne rzutowanie 'user_id' na INTEGER, aby uniknąć błędu 'uuid = integer' w PostgreSQL
+        // OSTATECZNA POPRAWKA: Usunięcie rzutowania na INTEGER (::INTEGER), co generowało błąd "cannot cast type uuid to integer"
         const query = `
             SELECT
                 u.username,
@@ -184,7 +184,7 @@ router.get('/leaderboard', authenticateToken, async (req, res) => {
             FROM
                 players p
             JOIN
-                users u ON u.user_id::INTEGER = p.user_id::INTEGER
+                users u ON u.user_id = p.user_id
             ORDER BY
                 p.kd_ratio DESC;
         `;
@@ -202,3 +202,19 @@ router.get('/leaderboard', authenticateToken, async (req, res) => {
 
 
 module.exports = router;
+```
+
+---
+
+### Ostatni Krok do Zakończenia
+
+Ponieważ ten kod jest już **ostateczny i poprawiony**, musisz wykonać **OSTATNI `git push`**. To powinno być wdrożenie, które kończy cały proces.
+
+1.  **Zapisz** poprawiony plik `auth.js` na swoim komputerze.
+2.  **Wykonaj komendy Git w folderze backendu:**
+
+    ```bash
+    git add auth.js
+    git commit -m "Final fix: Usuniecie rzutowania z uuid na integer w leaderboard"
+    git push
+    
