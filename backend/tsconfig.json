@@ -1,13 +1,16 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
-    "module": "CommonJS",
+    // Określa moduł docelowy ES2022 (wymagany dla 'await' poza funkcjami async, ale ES2020 wystarczy dla większości Node.js)
+    "target": "ES2020", 
+    // Używa CommonJS, aby pasowało do istniejącego kodu Node.js (require/module.exports)
+    "module": "CommonJS", 
     "rootDir": "./",
     "outDir": "./dist",
-    "esModuleInterop": true,
+    // Umożliwia domyślny import z modułów bez domyślnego eksportu (ważne dla Express)
+    "esModuleInterop": true, 
     "forceConsistentCasingInFileNames": true,
 
-    // Zrelaksowane reguły (z Twojej propozycji) - klucz do pomyślnej migracji
+    // --- Zrelaksowane reguły (z Twojej propozycji) ---
     "strict": false,
     "noImplicitAny": false,
     "strictPropertyInitialization": false,
@@ -15,30 +18,34 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
 
-    // KLUCZOWE: Pozwalamy na pliki JavaScript, ale ich nie sprawdzamy
+    // --- KLUCZOWE USTAWIENIA DLA ISTNIEJĄCEGO JS ---
+    // Włącza przetwarzanie plików JavaScript.
     "allowJs": true,
-    "checkJs": false,
+    // Wyłącza sprawdzanie typów dla plików JS (ponieważ są to stare pliki bez adnotacji).
+    "checkJs": false, 
     
-    "moduleResolution": "Node",
+    // Rozwiązuje moduły w sposób typowy dla Node.js
+    "moduleResolution": "Node", 
 
-    // JAWNA LISTA TYPÓW: Zaktualizowana o pakiety z package.json
+    // JAWNA LISTA TYPÓW (z Twojego package.json)
     "types": [
       "node",
-      "express", // Typy dla Express
-      "pg",      // Typy dla 'pg' (PostgreSQL)
-      "cors",    // Typy dla 'cors'
-      "bcrypt",  // Typy dla 'bcrypt'
-      "jsonwebtoken", // Typy dla 'jsonwebtoken'
-      "nodemailer"    // Typy dla 'nodemailer'
+      "express", 
+      "pg", 
+      "cors", 
+      "bcrypt", 
+      "jsonwebtoken", 
+      "nodemailer",
+      "axios" // Dodano axios
     ]
   },
   "include": [
-    "./*.ts",     // Dołącz wszystkie nowe pliki TypeScript w głównym folderze
-    "./*.js"      // Dołącz istniejące pliki JS (index.js, auth.js, email.js)
+    "./*.ts", 
+    // Dołącz istniejące pliki JS (index.js, auth.js, email.js)
+    "./*.js" 
   ],
   "exclude": [
     "node_modules",
-    "**/*.spec.ts",
-    "**/*.test.ts"
+    "dist" // Wyklucza folder wyjściowy
   ]
 }
