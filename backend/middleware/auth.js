@@ -202,19 +202,3 @@ router.get('/leaderboard', authenticateToken, async (req, res) => {
 
 
 module.exports = router;
-```
-
----
-
-### Ostatni Krok do Zakończenia
-
-Ponieważ ten kod jest już **ostateczny i poprawiony**, musisz wykonać **OSTATNI `git push`**. To powinno być wdrożenie, które kończy cały proces.
-
-1.  **Zapisz** poprawiony plik `auth.js` na swoim komputerze.
-2.  **Wykonaj komendy Git w folderze backendu:**
-
-    ```bash
-    git add auth.js
-    git commit -m "Final fix: Usuniecie rzutowania z uuid na integer w leaderboard"
-    git push
-    
