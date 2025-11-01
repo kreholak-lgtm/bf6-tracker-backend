@@ -1,46 +1,33 @@
 {
   "expo": {
-    // --- Standardowe wpisy (dodane dla kompletności) ---
-    // Możesz zmienić "name" i "slug", jeśli chcesz
-    "name": "mobile-app",
-    "slug": "mobile-app",
+    "name": "BF6-Tracker",
+    "slug": "bf6-tracker",
     "version": "1.0.0",
     "orientation": "portrait",
-    // Upewnij się, że masz plik icon.png w folderze assets
-    "icon": "./assets/icon.png", 
-
-    // --- WYMAGANA POPRAWKA (FIX) ---
+    "icon": "./assets/icon.png",
     "splash": {
-      // Upewnij się, że masz plik splash.png w folderze assets
-      "image": "./assets/splash.png", 
-      "resizeMode": "contain",
-      // To jest kluczowa linia, która naprawia błąd budowania:
-      "backgroundColor": "#000000" 
+      "backgroundColor": "#000000",
+      "resizeMode": "contain"
     },
-    // --- Koniec poprawki ---
-
-    // --- Twoje istniejące wpisy (zintegrowane) ---
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.krytianom.mobileapp",
+      "adaptiveIcon": {
+        "backgroundColor": "#000000"
+      }
+    },
     "extra": {
       "eas": {
         "projectId": "e2f10ce8-391c-4976-af2d-c7c7b0d484a6"
       }
-    },
-    "android": {
-      "package": "com.krytianom.mobileapp",
-      // Dobrze jest też mieć adaptiveIcon
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png", // Upewnij się, że ten plik istnieje
-        "backgroundColor": "#000000"
-      }
-    },
-    // ------------------------------------------
-
-    // --- Inne standardowe wpisy ---
-    "ios": {
-      "supportsTablet": true
-    },
-    "assets": [
-      "./assets"
-    ]
+    }
   }
 }
