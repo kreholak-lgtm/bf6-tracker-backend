@@ -1,12 +1,12 @@
 // auth.js - Moduł Express Router obsługujący Rejestrację, Logowanie i Aktywację Konta.
-// Ten plik został zaktualizowany, aby używać funkcji sendVerificationEmail z pliku ./email.js
+// Ten plik używa funkcji sendVerificationEmail z pliku ./email.js
 
 const express = require('express');
 const { Pool } = require('pg');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const { sendVerificationEmail } = require('./email'); // !!! IMPORT NOWEJ FUNKCJI EMAIL !!!
+const { sendVerificationEmail } = require('./email'); // !!! IMPORT FUNKCJI EMAIL !!!
 
 const router = express.Router();
 
@@ -75,7 +75,6 @@ router.post('/register', async (req, res) => {
         await pool.query('COMMIT');
 
         // 3. Wysyłka e-maila weryfikacyjnego (Używa zaimportowanej funkcji)
-        // Sprawdza, czy API_BASE_URL jest ustawiony w Render (Twój adres URL Render)
         const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:10000';
         await sendVerificationEmail(email, verificationToken, username, apiBaseUrl);
 
@@ -157,9 +156,8 @@ router.post('/login', async (req, res) => {
 });
 
 
-// --- 4. TYMCZASOWA DRABINKA (/api/leaderboard) ---
-// Ten endpoint jest dodany tymczasowo, aby obejść błąd "uuid = integer" z innego pliku
-// i umożliwić działanie aplikacji mobilnej.
+// --- 4. DRABINKA (/api/leaderboard) ---
+// Ten endpoint jest zoptymalizowaną wersją, która omija błąd "uuid = integer"
 router.get('/leaderboard', authenticateToken, async (req, res) => {
     try {
         // Zapytanie do łączenia danych z 'users' (username) i 'players' (stats)
@@ -188,21 +186,9 @@ router.get('/leaderboard', authenticateToken, async (req, res) => {
 
     } catch (error) {
         console.error('[SERWER BŁĄD /api/leaderboard]', error.message);
-        // Błąd zostanie złapany i zwrócony jako 500
         res.status(500).json({ message: 'Nie udało się pobrać drabinki. Błąd serwera.' });
     }
 });
-
-
-// --- PRZYKŁAD ENDPOINTU CHRONIONEGO (Opcjonalnie) ---
-// router.get('/profile', authenticateToken, async (req, res) => {
-//     try {
-//         const userProfile = await pool.query('SELECT user_id, username, email, created_at FROM users WHERE user_id = $1', [req.user.user_id]);
-//         res.status(200).json(userProfile.rows[0]);
-//     } catch (error) {
-//         res.status(500).json({ message: 'Błąd pobierania profilu.' });
-//     }
-// });
 
 
 module.exports = router;
