@@ -67,8 +67,9 @@ router.post('/register', async (req, res) => {
         await client.query('BEGIN'); // Rozpoczęcie transakcji
 
         // 3. Dodanie użytkownika do tabeli 'users'
+        // ZMIENIONO: 'hashed_password' na 'password_hash'
         const userInsertQuery = `
-            INSERT INTO users (username, hashed_password, email, verification_token, is_verified)
+            INSERT INTO users (username, password_hash, email, verification_token, is_verified)
             VALUES ($1, $2, $3, $4, FALSE) 
             RETURNING user_id;
         `;
@@ -151,7 +152,8 @@ router.post('/login', async (req, res) => {
 
     try {
         // 1. Pobranie danych użytkownika (w tym hasła hashowanego)
-        const result = await client.query('SELECT user_id, username, hashed_password, is_verified FROM users WHERE username = $1', [username]);
+        // ZMIENIONO: 'hashed_password' na 'password_hash'
+        const result = await client.query('SELECT user_id, username, password_hash, is_verified FROM users WHERE username = $1', [username]);
 
         if (result.rows.length === 0) {
             return res.status(400).json({ message: 'Nieprawidłowa nazwa użytkownika lub hasło.' });
@@ -165,7 +167,8 @@ router.post('/login', async (req, res) => {
         }
 
         // 3. Porównanie hasła
-        const passwordMatch = await bcrypt.compare(password, user.hashed_password);
+        // ZMIENIONO: 'user.hashed_password' na 'user.password_hash'
+        const passwordMatch = await bcrypt.compare(password, user.password_hash);
 
         if (!passwordMatch) {
             return res.status(400).json({ message: 'Nieprawidłowa nazwa użytkownika lub hasło.' });
@@ -229,3 +232,20 @@ router.get('/leaderboard', authenticateToken, async (req, res) => {
 
 
 module.exports = router;
+```
+
+---
+## Krok do Wykonania
+
+Ten plik **`auth.js`** jest teraz w 100% zsynchronizowany z nazwą kolumny **`password_hash`** w Twojej bazie danych. To powinien być ostatni błąd związany ze schematem bazy danych.
+
+**Musisz teraz wykonać ostatni `git push` z tymi zmianami:**
+
+1.  **Zapisz** zaktualizowany plik `auth.js` na swoim komputerze.
+2.  **Wykonaj komendy Git w folderze backendu:**
+
+    ```bash
+    git add auth.js
+    git commit -m "Fix: Finalna synchronizacja nazwy kolumny hasla na 'password_hash'"
+    git push
+    
