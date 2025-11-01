@@ -1,43 +1,38 @@
 // auth.js - Moduł Express Router obsługujący Rejestrację, Logowanie i Aktywację Konta.
-// Ten plik używa funkcji sendVerificationEmail z pliku ./email.js
+// Wersja: Natychmiastowe logowanie po rejestracji (bez weryfikacji e-mail).
 
 const express = require('express');
 const { Pool } = require('pg');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-// Import funkcji do wysyłki e-maila
+// Zmienna sendVerificationEmail nie jest już używana, ale zostawiamy import, aby nie łamać zależności.
 const { sendVerificationEmail } = require('./email'); 
 
 const router = express.Router();
 
 // --- Konfiguracja Bazy Danych ---
 const pool = new Pool({
-    // Używa zmiennych środowiskowych z Render, zdefiniowanych w pliku .env
+    // Używa zmiennych środowiskowych z Render
     user: process.env.DB_USER,
     host: process.env.DB_HOST,
     database: process.env.DB_NAME,
     password: process.env.DB_PASSWORD,
     port: process.env.DB_PORT,
-    // Warunkowe SSL: Używane na Renderze, nie na lokalnej maszynie
     ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
 });
 
 // --- Middleware do weryfikacji JWT ---
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
-    // Oczekiwany format: Authorization: Bearer <TOKEN>
     const token = authHeader && authHeader.split(' ')[1]; 
 
     if (token == null) {
-        // 401 Unauthorized - Brak tokena
         return res.status(401).json({ error: 'Brak tokena dostępu. Wymagane logowanie.' });
     }
 
-    // Weryfikacja tokena przy użyciu tajnego klucza
     jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
         if (err) {
-            // 403 Forbidden - Token jest nieważny, wygasł lub jest sfałszowany
             return res.status(403).json({ error: 'Token nieważny lub wygasły.' });
         }
         req.user = user;
@@ -47,6 +42,7 @@ const authenticateToken = (req, res, next) => {
 
 // ===================================
 // --- 1. REJESTRACJA UŻYTKOWNIKA ---
+//    Natychmiast generuje token JWT i loguje.
 // ===================================
 router.post('/register', async (req, res) => {
     const { username, password, email, playerName, platform, countryCode } = req.body;
@@ -59,22 +55,23 @@ router.post('/register', async (req, res) => {
             return res.status(409).json({ message: 'Użytkownik lub adres e-mail już istnieje.' });
         }
 
-        // 2. Hashowanie hasła i generowanie tokena
+        // 2. Hashowanie hasła (konieczne ze względów bezpieczeństwa)
         const saltRounds = 10;
         const hashedPassword = await bcrypt.hash(password, saltRounds);
-        const verificationToken = crypto.randomBytes(32).toString('hex');
+        // Usunięto generowanie verificationToken - nie jest już potrzebny.
         
         await client.query('BEGIN'); // Rozpoczęcie transakcji
 
-        // 3. Dodanie użytkownika do tabeli 'users'
-        // SYNCHRONIZACJA Z OSTATNIM BŁĘDEM W BD: Używa 'password_hash'
+        // 3. Dodanie użytkownika do tabeli 'users' z is_verified = TRUE
+        // ZMIENIONO: is_verified = TRUE
         const userInsertQuery = `
-            INSERT INTO users (username, password_hash, email, verification_token, is_verified)
-            VALUES ($1, $2, $3, $4, FALSE) 
+            INSERT INTO users (username, password_hash, email, is_verified)
+            VALUES ($1, $2, $3, TRUE) 
             RETURNING user_id;
         `;
-        const userResult = await client.query(userInsertQuery, [username, hashedPassword, email, verificationToken]);
+        const userResult = await client.query(userInsertQuery, [username, hashedPassword, email]);
         const newUserId = userResult.rows[0].user_id;
+        const newUser = { user_id: newUserId, username: username }; // Dane do JWT
 
         // 4. Dodanie rekordu gracza do tabeli 'players'
         const playerInsertQuery = `
@@ -85,18 +82,17 @@ router.post('/register', async (req, res) => {
 
         await client.query('COMMIT'); // Zatwierdzenie transakcji
 
-        // 5. Wysyłka e-maila weryfikacyjnego (asynchronicznie)
-        const apiBaseUrl = process.env.API_BASE_URL || 'https://bf6-tracker-backend.onrender.com';
-        await sendVerificationEmail(email, verificationToken, username, apiBaseUrl);
+        // 5. Natychmiastowe generowanie tokena JWT (automatyczne logowanie)
+        const token = jwt.sign(
+            { user_id: newUser.user_id, username: newUser.username }, 
+            process.env.JWT_SECRET, 
+            { expiresIn: '1h' }
+        );
         
-        // --- JAWNE LOGOWANIE TOKENA DLA RĘCZNEJ AKTYWACJI ---
-        const verificationLink = `${apiBaseUrl}/api/verify-email?token=${verificationToken}`;
-        console.log(`[LINK AKTYWACYJNY] Użyj linku: ${verificationLink}`);
-        // ----------------------------------------------------
-        
+        // Zwraca token do klienta, logując go automatycznie
         res.status(201).json({ 
-            message: 'Konto utworzone. Sprawdź e-mail, aby aktywować konto.',
-            verificationLink: verificationLink // Zwracanie linku do klienta mobilnego (opcjonalnie)
+            message: 'Rejestracja pomyślna. Zalogowano automatycznie.',
+            token: token
         });
 
     } catch (error) {
@@ -109,52 +105,26 @@ router.post('/register', async (req, res) => {
 });
 
 // ===================================
-// --- 2. AKTYWACJA E-MAILA ---
+// --- 2. ENDPOINT AKTYWACJI E-MAILA ---
+//    Zmieniono, aby zawsze zwracał komunikat o sukcesie (żeby nie łamać linków).
 // ===================================
-router.get('/verify-email', async (req, res) => {
-    const { token } = req.query;
-    const client = await pool.connect();
-
-    try {
-        if (!token) {
-            return res.status(400).send('Brak tokena weryfikacyjnego.');
-        }
-
-        // 1. Wyszukanie użytkownika po tokenie
-        const result = await client.query('SELECT user_id FROM users WHERE verification_token = $1 AND is_verified = FALSE', [token]);
-        
-        if (result.rows.length === 0) {
-            // Zrzut ekranu, który wklejałeś, pokazywał ten błąd.
-            return res.status(400).send('<h1>Błąd aktywacji</h1><p>Nieprawidłowy lub wygasły token weryfikacyjny.</p>');
-        }
-
-        const userId = result.rows[0].user_id;
-
-        // 2. Aktywacja konta i usunięcie tokena
-        await client.query('UPDATE users SET is_verified = TRUE, verification_token = NULL WHERE user_id = $1', [userId]);
-
-        // 3. Potwierdzenie sukcesu w przeglądarce
-        res.status(200).send('<h1>Konto zostało pomyślnie aktywowane!</h1><p>Możesz teraz zalogować się do aplikacji.</p>');
-
-    } catch (error) {
-        console.error('[SERWER BŁĄD /api/verify-email]', error.message);
-        res.status(500).send('Błąd serwera podczas aktywacji.');
-    } finally {
-        client.release();
-    }
+router.get('/verify-email', (req, res) => {
+    // Ponieważ aktywacja jest automatyczna, ten endpoint zwraca sukces.
+    res.status(200).send('<h1>Konto zostało pomyślnie aktywowane!</h1><p>Możesz teraz zalogować się do aplikacji.</p>');
 });
 
 
 // ===================================
 // --- 3. LOGOWANIE UŻYTKOWNIKA ---
+//    Logika pozostaje bez zmian.
 // ===================================
 router.post('/login', async (req, res) => {
+// ... logika logowania pozostaje bez zmian ...
     const { username, password } = req.body;
     const client = await pool.connect();
 
     try {
         // 1. Pobranie danych użytkownika (w tym hasła hashowanego)
-        // SYNCHRONIZACJA Z OSTATNIM BŁĘDEM W BD: Używa 'password_hash'
         const result = await client.query('SELECT user_id, username, password_hash, is_verified FROM users WHERE username = $1', [username]);
 
         if (result.rows.length === 0) {
@@ -163,7 +133,7 @@ router.post('/login', async (req, res) => {
 
         const user = result.rows[0];
 
-        // 2. Weryfikacja aktywacji konta
+        // 2. Weryfikacja aktywacji konta (teraz zawsze TRUE, ale zachowujemy dla kompatybilności)
         if (user.is_verified === false) {
             return res.status(403).json({ message: 'Konto nieaktywne. Sprawdź e-mail weryfikacyjny.' });
         }
@@ -195,8 +165,7 @@ router.post('/login', async (req, res) => {
 
 // ===================================
 // --- 4. TYMCZASOWY ENDPOINT DRABINKI ---
-//    Ten endpoint nadpisuje ewentualny stary kod i
-//    jest zabezpieczony przed błędem "uuid = integer".
+//    Logika pozostaje bez zmian.
 // ===================================
 router.get('/leaderboard', authenticateToken, async (req, res) => {
     const client = await pool.connect();
@@ -224,7 +193,6 @@ router.get('/leaderboard', authenticateToken, async (req, res) => {
 
     } catch (error) {
         console.error('[SERWER BŁĄD /api/leaderboard]', error.message);
-        // Błąd 500 jest oczekiwany, jeśli stary kod nadal się wczytuje
         res.status(500).json({ message: 'Błąd pobierania drabinki. Skontaktuj się z administratorem.' });
     } finally {
         client.release();
