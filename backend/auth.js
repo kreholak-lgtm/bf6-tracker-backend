@@ -25,6 +25,7 @@ const pool = new Pool({
 // --- Middleware do weryfikacji JWT ---
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
+    // Oczekiwany format: Authorization: Bearer <TOKEN>
     const token = authHeader && authHeader.split(' ')[1]; 
 
     if (token == null) {
@@ -58,12 +59,11 @@ router.post('/register', async (req, res) => {
         // 2. Hashowanie hasła (konieczne ze względów bezpieczeństwa)
         const saltRounds = 10;
         const hashedPassword = await bcrypt.hash(password, saltRounds);
-        // Usunięto generowanie verificationToken - nie jest już potrzebny.
         
         await client.query('BEGIN'); // Rozpoczęcie transakcji
 
         // 3. Dodanie użytkownika do tabeli 'users' z is_verified = TRUE
-        // ZMIENIONO: is_verified = TRUE
+        // UŻYWA NAZWY Z KOLUMNY Z BD: 'password_hash'
         const userInsertQuery = `
             INSERT INTO users (username, password_hash, email, is_verified)
             VALUES ($1, $2, $3, TRUE) 
@@ -78,7 +78,8 @@ router.post('/register', async (req, res) => {
             INSERT INTO players (user_id, player_name, platform, country_code, kd_ratio, total_kills, total_deaths)
             VALUES ($1, $2, $3, $4, 0.0, 0, 0);
         `;
-        await client.query(playerInsertQuery, [newUserId, playerName, platform, countryCode]);
+        // Dodano [newUserId] jako pierwszy parametr (dane do wstawienia)
+        await client.query(playerInsertQuery, [newUserId, playerName, platform, countryCode]); 
 
         await client.query('COMMIT'); // Zatwierdzenie transakcji
 
@@ -106,7 +107,7 @@ router.post('/register', async (req, res) => {
 
 // ===================================
 // --- 2. ENDPOINT AKTYWACJI E-MAILA ---
-//    Zmieniono, aby zawsze zwracał komunikat o sukcesie (żeby nie łamać linków).
+//    Zmieniono, aby zawsze zwracał komunikat o sukcesie.
 // ===================================
 router.get('/verify-email', (req, res) => {
     // Ponieważ aktywacja jest automatyczna, ten endpoint zwraca sukces.
@@ -119,12 +120,11 @@ router.get('/verify-email', (req, res) => {
 //    Logika pozostaje bez zmian.
 // ===================================
 router.post('/login', async (req, res) => {
-// ... logika logowania pozostaje bez zmian ...
     const { username, password } = req.body;
     const client = await pool.connect();
 
     try {
-        // 1. Pobranie danych użytkownika (w tym hasła hashowanego)
+        // 1. Pobranie danych użytkownika (używa nazwy kolumny 'password_hash')
         const result = await client.query('SELECT user_id, username, password_hash, is_verified FROM users WHERE username = $1', [username]);
 
         if (result.rows.length === 0) {
@@ -133,9 +133,9 @@ router.post('/login', async (req, res) => {
 
         const user = result.rows[0];
 
-        // 2. Weryfikacja aktywacji konta (teraz zawsze TRUE, ale zachowujemy dla kompatybilności)
+        // 2. Weryfikacja aktywacji konta (teraz zawsze TRUE)
         if (user.is_verified === false) {
-            return res.status(403).json({ message: 'Konto nieaktywne. Sprawdź e-mail weryfikacyjny.' });
+            return res.status(403).json({ message: 'Konto nieaktywne. Wymagana aktywacja.' });
         }
 
         // 3. Porównanie hasła
@@ -171,7 +171,6 @@ router.get('/leaderboard', authenticateToken, async (req, res) => {
     const client = await pool.connect();
     
     try {
-        // Zapytanie jest poprawne, ponieważ user_id w obu tabelach jest INTEGER (SERIAL).
         const query = `
             SELECT
                 u.username,
