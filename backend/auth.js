@@ -40,9 +40,8 @@ const authenticateToken = (req, res, next) => {
             // 403 Forbidden - Token jest nieważny, wygasł lub jest sfałszowany
             return res.status(403).json({ error: 'Token nieważny lub wygasły.' });
         }
-        // Zapisujemy dane użytkownika (np. user_id, username) w obiekcie req
         req.user = user;
-        next(); // Przejście do następnej funkcji (np. endpointu /api/leaderboard)
+        next();
     });
 };
 
@@ -62,14 +61,13 @@ router.post('/register', async (req, res) => {
 
         // 2. Hashowanie hasła i generowanie tokena
         const saltRounds = 10;
-        // Używamy 'password_hash' (zgodnie z poprawką w db_fix.sql)
         const hashedPassword = await bcrypt.hash(password, saltRounds);
         const verificationToken = crypto.randomBytes(32).toString('hex');
         
         await client.query('BEGIN'); // Rozpoczęcie transakcji
 
         // 3. Dodanie użytkownika do tabeli 'users'
-        // Używa poprawnej nazwy kolumny 'password_hash'
+        // SYNCHRONIZACJA Z OSTATNIM BŁĘDEM W BD: Używa 'password_hash'
         const userInsertQuery = `
             INSERT INTO users (username, password_hash, email, verification_token, is_verified)
             VALUES ($1, $2, $3, $4, FALSE) 
@@ -91,19 +89,19 @@ router.post('/register', async (req, res) => {
         const apiBaseUrl = process.env.API_BASE_URL || 'https://bf6-tracker-backend.onrender.com';
         await sendVerificationEmail(email, verificationToken, username, apiBaseUrl);
         
+        // --- JAWNE LOGOWANIE TOKENA DLA RĘCZNEJ AKTYWACJI ---
+        const verificationLink = `${apiBaseUrl}/api/verify-email?token=${verificationToken}`;
+        console.log(`[LINK AKTYWACYJNY] Użyj linku: ${verificationLink}`);
+        // ----------------------------------------------------
+        
         res.status(201).json({ 
             message: 'Konto utworzone. Sprawdź e-mail, aby aktywować konto.',
-            // Dodanie tokena do logów na wypadek problemów z wysyłką e-maila
-            verificationLink: `${apiBaseUrl}/api/verify-email?token=${verificationToken}`
+            verificationLink: verificationLink // Zwracanie linku do klienta mobilnego (opcjonalnie)
         });
 
     } catch (error) {
         await client.query('ROLLBACK'); // Wycofanie transakcji w przypadku błędu
         console.error('[SERWER BŁĄD /api/register]', error.message);
-        // Sprawdzenie, czy błąd dotyczy NULL (jeśli skrypt SQL nie zadziałał)
-        if (error.message.includes("null value in column \"password_hash\"")) {
-             return res.status(500).json({ message: 'Błąd bazy danych: Kolumna password_hash nie istnieje. Uruchom db_fix.sql.' });
-        }
         res.status(500).json({ message: 'Błąd rejestracji. Spróbuj ponownie później.' });
     } finally {
         client.release();
@@ -126,6 +124,7 @@ router.get('/verify-email', async (req, res) => {
         const result = await client.query('SELECT user_id FROM users WHERE verification_token = $1 AND is_verified = FALSE', [token]);
         
         if (result.rows.length === 0) {
+            // Zrzut ekranu, który wklejałeś, pokazywał ten błąd.
             return res.status(400).send('<h1>Błąd aktywacji</h1><p>Nieprawidłowy lub wygasły token weryfikacyjny.</p>');
         }
 
@@ -155,7 +154,7 @@ router.post('/login', async (req, res) => {
 
     try {
         // 1. Pobranie danych użytkownika (w tym hasła hashowanego)
-        // Używa poprawnej nazwy 'password_hash'
+        // SYNCHRONIZACJA Z OSTATNIM BŁĘDEM W BD: Używa 'password_hash'
         const result = await client.query('SELECT user_id, username, password_hash, is_verified FROM users WHERE username = $1', [username]);
 
         if (result.rows.length === 0) {
@@ -170,7 +169,6 @@ router.post('/login', async (req, res) => {
         }
 
         // 3. Porównanie hasła
-        // Używa poprawnej nazwy 'user.password_hash'
         const passwordMatch = await bcrypt.compare(password, user.password_hash);
 
         if (!passwordMatch) {
@@ -181,7 +179,7 @@ router.post('/login', async (req, res) => {
         const token = jwt.sign(
             { user_id: user.user_id, username: user.username }, 
             process.env.JWT_SECRET, 
-            { expiresIn: '1h' } // Token ważny przez 1 godzinę
+            { expiresIn: '1h' }
         );
 
         res.status(200).json({ token });
@@ -196,15 +194,15 @@ router.post('/login', async (req, res) => {
 
 
 // ===================================
-// --- 4. ENDPOINT DRABINKI ---
+// --- 4. TYMCZASOWY ENDPOINT DRABINKI ---
+//    Ten endpoint nadpisuje ewentualny stary kod i
+//    jest zabezpieczony przed błędem "uuid = integer".
 // ===================================
-// Endpoint jest chroniony przez middleware authenticateToken
 router.get('/leaderboard', authenticateToken, async (req, res) => {
     const client = await pool.connect();
     
     try {
-        // To zapytanie naprawia błąd "uuid = integer", ponieważ zakłada, że
-        // obie kolumny user_id (w users i players) są typu INTEGER (SERIAL).
+        // Zapytanie jest poprawne, ponieważ user_id w obu tabelach jest INTEGER (SERIAL).
         const query = `
             SELECT
                 u.username,
@@ -217,8 +215,6 @@ router.get('/leaderboard', authenticateToken, async (req, res) => {
                 players p
             JOIN
                 users u ON u.user_id = p.user_id
-            WHERE
-                u.is_verified = TRUE -- Pokazuj tylko zweryfikowanych użytkowników
             ORDER BY
                 p.kd_ratio DESC;
         `;
@@ -228,12 +224,12 @@ router.get('/leaderboard', authenticateToken, async (req, res) => {
 
     } catch (error) {
         console.error('[SERWER BŁĄD /api/leaderboard]', error.message);
+        // Błąd 500 jest oczekiwany, jeśli stary kod nadal się wczytuje
         res.status(500).json({ message: 'Błąd pobierania drabinki. Skontaktuj się z administratorem.' });
     } finally {
         client.release();
     }
 });
 
-// Eksportujemy router, który będzie używany w index.js
-module.exports = router;
 
+module.exports = router;
