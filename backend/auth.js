@@ -157,6 +157,43 @@ router.post('/login', async (req, res) => {
 });
 
 
+// --- 4. TYMCZASOWA DRABINKA (/api/leaderboard) ---
+// Ten endpoint jest dodany tymczasowo, aby obejść błąd "uuid = integer" z innego pliku
+// i umożliwić działanie aplikacji mobilnej.
+router.get('/leaderboard', authenticateToken, async (req, res) => {
+    try {
+        // Zapytanie do łączenia danych z 'users' (username) i 'players' (stats)
+        const leaderboardQuery = `
+            SELECT
+                u.username,
+                p.player_name,
+                p.country_code,
+                p.total_kills,
+                p.total_deaths,
+                p.kd_ratio
+            FROM
+                players p
+            JOIN
+                users u ON u.user_id = p.user_id
+            WHERE
+                u.is_verified = TRUE AND p.kd_ratio IS NOT NULL
+            ORDER BY
+                p.kd_ratio DESC, p.total_kills DESC
+        `;
+
+        const result = await pool.query(leaderboardQuery);
+        
+        // Zapewnienie, że dane wyjściowe są w formacie JSON
+        res.status(200).json(result.rows);
+
+    } catch (error) {
+        console.error('[SERWER BŁĄD /api/leaderboard]', error.message);
+        // Błąd zostanie złapany i zwrócony jako 500
+        res.status(500).json({ message: 'Nie udało się pobrać drabinki. Błąd serwera.' });
+    }
+});
+
+
 // --- PRZYKŁAD ENDPOINTU CHRONIONEGO (Opcjonalnie) ---
 // router.get('/profile', authenticateToken, async (req, res) => {
 //     try {
